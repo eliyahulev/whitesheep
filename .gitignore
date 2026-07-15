@@ -1,0 +1,21 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env.local
+.env.*.local
+
+# Firebase emulator artifacts
+.firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-export-*
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# TypeScript build info
+*.tsbuildinfo

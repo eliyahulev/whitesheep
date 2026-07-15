@@ -1,0 +1,500 @@
+/* ============================================================
+   כבשה לבנה — design system
+   "Wool & Fresh Water": cool wool paper, deep pine ink, a single
+   fresh-eucalyptus accent, warm wool counterpoint. Signature = the
+   laundry tag (punched paper chip). Calm, all-day operational tool.
+   ============================================================ */
+
+:root {
+  /* palette */
+  --paper: #f4f6f2; /* cool wool white */
+  --paper-2: #fbfcfa; /* raised surface */
+  --ink: #1e2a28; /* deep pine */
+  --ink-soft: #5c6b67; /* muted text */
+  --line: #e2e7df; /* greenish hairline */
+  --line-strong: #cfd8cd;
+
+  --accent: #17756b; /* fresh eucalyptus / clean water */
+  --accent-ink: #ffffff;
+  --accent-deep: #0f574f;
+  --accent-soft: #dcebe6;
+
+  --wool: #e9e3d6; /* warm wool counterpoint */
+  --wool-ink: #6b5f45;
+
+  --sun: #e4a93c; /* amber — warnings / overdue */
+  --sun-soft: #f7ead0;
+  --success: #2e7d57;
+  --danger: #b8442d; /* muted brick */
+  --danger-soft: #f6ddd5;
+
+  /* type */
+  --font-display: 'Frank Ruhl Libre', Georgia, serif;
+  --font-ui: 'Assistant', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(30, 42, 40, 0.05), 0 6px 20px -12px rgba(30, 42, 40, 0.25);
+  --nav-h: 66px;
+  --header-h: 58px;
+
+  font-family: var(--font-ui);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* numeric data: prices, weights, ids, phones — reads like a scale/receipt */
+.num,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.center-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fadeIn 0.35s ease both;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
+/* ---------- App shell (mobile-first) ---------- */
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 16px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-block-end: 1px solid var(--line);
+}
+
+.app-header .spacer {
+  flex: 1;
+}
+.app-header .user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.brandmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.brandmark svg {
+  flex: none;
+}
+
+.linkbtn {
+  background: none;
+  border: none;
+  color: var(--accent-deep);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.linkbtn:hover {
+  background: var(--accent-soft);
+}
+
+.app-main {
+  flex: 1;
+  padding: 18px 16px;
+  padding-block-end: calc(var(--nav-h) + 18px);
+  max-width: 1080px;
+  inline-size: 100%;
+  margin-inline: auto;
+}
+
+/* Bottom nav (mobile) → right sidebar (desktop) */
+.app-nav {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: 20;
+  height: var(--nav-h);
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: var(--paper-2);
+  border-block-start: 1px solid var(--line);
+}
+.app-nav .nav-brand {
+  display: none;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  position: relative;
+}
+.nav-item .ico {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.nav-item.active {
+  color: var(--accent-deep);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inline-size: 26px;
+  block-size: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.page-title {
+  font-size: 1.55rem;
+  margin-block: 2px 4px;
+}
+.page-sub {
+  color: var(--ink-soft);
+  margin-block: 0 14px;
+}
+.muted {
+  color: var(--ink-soft);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-h {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* eyebrow label */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ---------- Laundry tag (signature) ---------- */
+/* A chip shaped like the punched paper tag pinned to a garment. */
+.tag {
+  --tag-bg: var(--wool);
+  --tag-ink: var(--wool-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 20px; /* extra inline-start room for the punched hole */
+  background: var(--tag-bg);
+  color: var(--tag-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 999px;
+  position: relative;
+  white-space: nowrap;
+}
+/* the punched hole */
+.tag::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 8px;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tag-ink) 45%, transparent);
+}
+.tag.accent {
+  --tag-bg: var(--accent-soft);
+  --tag-ink: var(--accent-deep);
+}
+.tag.sun {
+  --tag-bg: var(--sun-soft);
+  --tag-ink: #8a5b12;
+}
+.tag.danger {
+  --tag-bg: var(--danger-soft);
+  --tag-ink: var(--danger);
+}
+.tag.success {
+  --tag-bg: #d8ede1;
+  --tag-ink: var(--success);
+}
+
+/* ---------- Forms ---------- */
+label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-block-end: 6px;
+  color: var(--ink);
+}
+input,
+select,
+textarea {
+  inline-size: 100%;
+  padding: 12px 13px;
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  color: var(--ink);
+  text-align: start;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input[dir='ltr'] {
+  font-family: var(--font-mono);
+}
+.field-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-block-start: 5px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-ink);
+  min-height: 46px;
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease;
+}
+.btn:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn.secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.btn.secondary:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--accent);
+}
+.btn.block {
+  inline-size: 100%;
+}
+
+/* ---------- Login ---------- */
+.login-wrap {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--accent-soft) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, var(--wool) 0%, transparent 45%), var(--paper);
+}
+.login-card {
+  inline-size: 100%;
+  max-inline-size: 400px;
+  padding: 26px;
+}
+.login-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin-block-end: 20px;
+}
+.login-hero h1 {
+  font-size: 1.9rem;
+  font-weight: 900;
+}
+.login-hero .tagline {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.hint-users {
+  margin-block-start: 18px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  border-block-start: 1px dashed var(--line-strong);
+  padding-block-start: 14px;
+}
+.hint-users code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.error-banner {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ---------- Desktop: right sidebar ---------- */
+@media (min-width: 900px) {
+  .app-shell {
+    flex-direction: row;
+  }
+  .app-nav {
+    position: sticky;
+    inset-block-start: 0;
+    inset-block-end: auto;
+    height: 100dvh;
+    inline-size: 244px;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 20px 14px;
+    border-block-start: none;
+    border-inline-start: 1px solid var(--line); /* logical → sits on the RIGHT in RTL */
+    background: var(--paper-2);
+    order: 2;
+  }
+  .app-nav .nav-brand {
+    display: flex;
+    padding: 6px 12px 20px;
+  }
+  .nav-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.98rem;
+  }
+  .nav-item.active {
+    background: var(--accent-soft);
+  }
+  .nav-item.active::before {
+    inset-block: 8px auto;
+    inset-inline-end: 0;
+    inline-size: 3px;
+    block-size: calc(100% - 16px);
+    border-radius: 3px;
+  }
+  .content-col {
+    flex: 1;
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+  }
+  .app-main {
+    padding-block-end: 28px;
+  }
+  .nav-brand-mobile {
+    display: none;
+  }
+}
