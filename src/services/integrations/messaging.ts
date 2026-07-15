@@ -1,11 +1,15 @@
-// Messaging integration interface. The real provider (Inforu/Twilio) is wired in
-// Module 3 as a Cloud Function; for now a stub logs the message. Swap by changing
-// `settings.integrations.smsProvider` — call sites never depend on a concrete provider.
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/firebase/config';
+
+// Messaging integration interface. The real provider (Twilio/Inforu) runs in the
+// `sendSms` Cloud Function (Module 3) with credentials server-side. The stub logs only.
+// Swap by changing `settings.integrations.smsProvider` — call sites depend only on this.
 
 export interface SendResult {
   ok: boolean;
   providerMessageId?: string;
   error?: string;
+  simulated?: boolean;
 }
 
 export interface MessagingProvider {
@@ -13,7 +17,7 @@ export interface MessagingProvider {
   sendSms(to: string, body: string): Promise<SendResult>;
 }
 
-/** Stub provider — logs instead of sending. Used until Module 3. */
+/** Client-side stub — logs instead of sending. Used only when smsProvider === 'stub'. */
 export const stubMessagingProvider: MessagingProvider = {
   name: 'stub',
   async sendSms(to, body) {
@@ -23,7 +27,20 @@ export const stubMessagingProvider: MessagingProvider = {
   },
 };
 
-export function getMessagingProvider(_providerName: string): MessagingProvider {
-  // Module 3 will register real providers here.
-  return stubMessagingProvider;
+/** Real provider: invokes the sendSms Cloud Function (credentials live server-side). */
+const cloudMessagingProvider: MessagingProvider = {
+  name: 'cloud',
+  async sendSms(to, body) {
+    try {
+      const fn = httpsCallable<{ to: string; body: string }, SendResult>(functions, 'sendSms');
+      const res = await fn({ to, body });
+      return res.data;
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
+};
+
+export function getMessagingProvider(providerName: string): MessagingProvider {
+  return providerName === 'stub' ? stubMessagingProvider : cloudMessagingProvider;
 }

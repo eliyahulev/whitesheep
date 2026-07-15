@@ -34,9 +34,15 @@ service cloud.firestore {
 
     // Operational data — customers, orders, order items, inventory, rentals:
     // all staff may read/write (business logic refines this in later modules).
-    match /customers/{id}   { allow read, write: if isStaff(); }
+    // Customers: staff read + create + update; only managers may delete.
+    match /customers/{id} {
+      allow read, create, update: if isStaff();
+      allow delete: if isManager();
+    }
     match /orders/{id}      { allow read, write: if isStaff(); }
     match /orderItems/{id}  { allow read, write: if isStaff(); }
+    // Sequential-number counters (e.g. counters/orders) — staff may read/increment.
+    match /counters/{id}    { allow read, write: if isStaff(); }
     match /inventoryItems/{id} { allow read, write: if isStaff(); }
     match /rentals/{id}     { allow read, write: if isStaff(); }
 

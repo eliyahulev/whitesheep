@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from './AuthContext';
 import type { Role } from '@/types/models';
 
@@ -15,7 +17,11 @@ export function RequireAuth({
   const location = useLocation();
 
   if (loading) {
-    return <div className="center-screen">טוען…</div>;
+    return (
+      <Box sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}>
+        <CircularProgress color="primary" />
+      </Box>
+    );
   }
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;

@@ -36,8 +36,10 @@ const DEFAULT_SETTINGS = {
       'שלום [שם הלקוח], זוהי תזכורת ידידותית כי קיים חוב פתוח על סך [סכום] ש"ח עבור הזמנה מספר [מספר]. לתשלום מהיר ומאובטח בקישור: [קישור לתשלום].',
     rentalOverdueReminder:
       'היי [שם], תזכורת קטנה לגבי המפות שהשאלת, הן היו אמורות לחזור בתאריך [תאריך]. נשמח לעדכון!',
+    invoiceIssued:
+      'היי [שם הלקוח], קיבלנו את תשלומך על סך [סכום] ש"ח. חשבונית מס קבלה: [קישור למסמך]. תודה שבחרת בנו!',
   },
-  integrations: { smsProvider: 'stub', invoiceProvider: 'stub' },
+  integrations: { smsProvider: 'twilio', invoiceProvider: 'stub' },
 };
 
 const USERS = [
@@ -83,7 +85,96 @@ async function main() {
   await db.collection('settings').doc('global').set(DEFAULT_SETTINGS);
   console.log('✓ settings/global');
 
-  // 3. Sample audit entry
+  // 3. Demo customers (both types)
+  const now = FieldValue.serverTimestamp();
+  const customers = [
+    {
+      name: 'משפחת כהן',
+      phone: '0521234567',
+      email: 'cohen@example.com',
+      type: 'private',
+      billing: { taxId: '039123456', contactName: '', address: 'הרצל 15, תל אביב' },
+      monthlyConsolidation: false,
+    },
+    {
+      name: 'דנה לוי',
+      phone: '0549876543',
+      email: '',
+      type: 'private',
+      billing: { taxId: '', contactName: '', address: '' },
+      monthlyConsolidation: false,
+    },
+    {
+      name: 'מלון הגליל',
+      phone: '0501112233',
+      email: 'orders@galil-hotel.co.il',
+      type: 'institutional',
+      billing: { taxId: '514789632', contactName: 'רועי מנהל תפעול', address: 'שדרות הים 1, נהריה' },
+      monthlyConsolidation: true,
+    },
+    {
+      name: 'גן אירועים להב',
+      phone: '0533344556',
+      email: 'info@lahav-events.co.il',
+      type: 'institutional',
+      billing: { taxId: '515963258', contactName: 'מיכל רכזת', address: 'מושב להב' },
+      monthlyConsolidation: true,
+    },
+  ];
+  const idByName: Record<string, string> = {};
+  for (const c of customers) {
+    const ref = await db.collection('customers').add({ ...c, createdAt: now, updatedAt: now });
+    idByName[c.name] = ref.id;
+  }
+  console.log(`✓ ${customers.length} demo customers`);
+
+  // 3b. Demo orders + items + order-number counter
+  const P = { kg: 15, iron: 8, dry: 25 };
+  async function addOrder(o: {
+    orderNumber: number;
+    customerName: string;
+    status: string;
+    hasPickupDelivery: boolean;
+    finalCost: number | null;
+    items: Record<string, unknown>[];
+  }) {
+    const ref = await db.collection('orders').add({
+      orderNumber: o.orderNumber,
+      customerId: idByName[o.customerName],
+      customerName: o.customerName,
+      status: o.status,
+      hasPickupDelivery: o.hasPickupDelivery,
+      finalCost: o.finalCost,
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const it of o.items) await db.collection('orderItems').add({ orderId: ref.id, ...it });
+  }
+  // #1001 — weighed laundry, not yet weighed → no final cost
+  await addOrder({
+    orderNumber: 1001,
+    customerName: 'משפחת כהן',
+    status: 'received',
+    hasPickupDelivery: false,
+    finalCost: null,
+    items: [{ service: 'weighed_laundry', unitPrice: P.kg }],
+  });
+  // #1002 — ironing + dry cleaning, in progress, pickup & delivery → cost computed
+  await addOrder({
+    orderNumber: 1002,
+    customerName: 'מלון הגליל',
+    status: 'in_progress',
+    hasPickupDelivery: true,
+    finalCost: 10 * P.iron + 3 * P.dry,
+    items: [
+      { service: 'ironing', quantity: 10, description: 'חולצות', unitPrice: P.iron, lineTotal: 10 * P.iron },
+      { service: 'dry_cleaning', quantity: 3, description: 'חליפות', unitPrice: P.dry, lineTotal: 3 * P.dry },
+    ],
+  });
+  await db.collection('counters').doc('orders').set({ next: 1002 });
+  console.log('✓ 2 demo orders (+ order counter)');
+
+  // 4. Sample audit entry
   await db.collection('auditLog').add({
     userId: 'system',
     userName: 'מערכת',

@@ -1,7 +1,14 @@
 import { useState } from 'react';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import { useAuth } from '@/auth/AuthContext';
 import { logAction } from '@/services/logAction';
 import { Tag } from '@/ui/Tag';
+import { Icon } from '@/ui/Icon';
 
 // Module 0 home is a skeleton. The real manager dashboard is Module 9.
 export function HomeScreen() {
@@ -14,44 +21,63 @@ export function HomeScreen() {
   }
 
   return (
-    <div className="stack">
-      <div>
-        <div className="eyebrow">מודול 0 · שלד המערכת</div>
-        <h1 className="page-title">שלום {user?.displayName || 'משתמש'} 👋</h1>
-      </div>
+    <Stack spacing={2}>
+      <Box>
+        <Typography variant="overline">מודול 0 · שלד המערכת</Typography>
+        <Typography variant="h1">שלום {user?.displayName || 'משתמש'} 👋</Typography>
+      </Box>
 
-      <div className="card stack">
-        <p className="muted" style={{ margin: 0 }}>
-          זהו שלד המערכת. מסכי הליבה — לקוחות, הזמנות, השכרות, תשלומים — ייבנו במודולים הבאים,
-          אחד־אחד.
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: '0.85rem' }}>התפקיד שלך:</span>
-          <Tag tone={user?.role === 'manager' ? 'accent' : 'wool'}>
-            {user?.role === 'manager' ? 'מנהל' : 'עובד'}
-          </Tag>
-        </div>
-        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-          הניווט מוצג בהתאם להרשאות. תגית הכביסה שלמעלה היא רכיב חוזר בכל המערכת — לסטטוסים,
-          לסוגי לקוחות ולמלאי.
-        </p>
-      </div>
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="body2">
+              זהו שלד המערכת. מסכי הליבה — לקוחות, הזמנות, השכרות, תשלומים — ייבנו במודולים הבאים,
+              על בסיס Material Design ומערכת העיצוב הזו.
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="caption">התפקיד שלך:</Typography>
+              <Tag tone={user?.role === 'manager' ? 'teal' : 'neutral'}>
+                {user?.role === 'manager' ? 'מנהל' : 'עובד'}
+              </Tag>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="caption">שבבי סטטוס לדוגמה:</Typography>
+              <Tag tone="teal-solid">התקבל</Tag>
+              <Tag tone="teal">בטיפול</Tag>
+              <Tag tone="amber">מוכן</Tag>
+              <Tag tone="success">נמסר</Tag>
+              <Tag tone="danger">חוב פתוח</Tag>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <div className="card stack">
-        <h2 className="section-h">בדיקת יומן ביקורת</h2>
-        <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-          כל פעולה מהותית נרשמת דרך <code className="mono">logAction</code>. לחצו כדי לרשום רשומה
-          לדוגמה.
-        </p>
-        <div>
-          <button className="btn secondary" onClick={() => void writeTestLog()}>
-            רישום פעולת בדיקה
-          </button>
-        </div>
-        {msg && (
-          <p style={{ color: 'var(--success)', margin: 0, fontWeight: 600 }}>{msg}</p>
-        )}
-      </div>
-    </div>
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">בדיקת יומן ביקורת</Typography>
+            <Typography variant="body2">
+              כל פעולה מהותית נרשמת דרך <code>logAction</code>. לחצו כדי לרשום רשומה לדוגמה.
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<Icon name="fact_check" size={20} />}
+                onClick={() => void writeTestLog()}
+              >
+                רישום פעולת בדיקה
+              </Button>
+              <Button variant="outlined" color="inherit" onClick={() => setMsg('')}>
+                נקה
+              </Button>
+            </Box>
+            {msg && (
+              <Typography sx={{ color: 'success.dark', fontWeight: 700 }}>{msg}</Typography>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
+    </Stack>
   );
 }

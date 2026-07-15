@@ -22,9 +22,14 @@ export const DEFAULT_SETTINGS: Settings = {
       'שלום [שם הלקוח], זוהי תזכורת ידידותית כי קיים חוב פתוח על סך [סכום] ש"ח עבור הזמנה מספר [מספר]. לתשלום מהיר ומאובטח בקישור: [קישור לתשלום].',
     rentalOverdueReminder:
       'היי [שם], תזכורת קטנה לגבי המפות שהשאלת, הן היו אמורות לחזור בתאריך [תאריך]. נשמח לעדכון!',
+    invoiceIssued:
+      'היי [שם הלקוח], קיבלנו את תשלומך על סך [סכום] ש"ח. חשבונית מס קבלה: [קישור למסמך]. תודה שבחרת בנו!',
   },
   integrations: {
-    smsProvider: 'stub',
+    // 'twilio' routes sends through the sendSms Cloud Function (credentials server-side).
+    // Without provider credentials the function runs in simulated mode. Use 'stub' for a
+    // pure client-side no-op.
+    smsProvider: 'twilio',
     invoiceProvider: 'stub',
   },
 };

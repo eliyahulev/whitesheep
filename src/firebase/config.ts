@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // Config comes from env vars — nothing hard-coded. See .env.example.
@@ -15,7 +15,9 @@ const firebaseConfig: FirebaseOptions = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// ignoreUndefinedProperties: writing an object with `undefined` fields (e.g. an optional
+// description left blank) silently drops them instead of throwing.
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const functions = getFunctions(app);
 
 // Point at the local emulator suite for development / testing without real credentials.

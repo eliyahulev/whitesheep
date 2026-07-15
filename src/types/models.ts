@@ -39,7 +39,9 @@ export type OrderStatus =
 
 export interface Order {
   id: string;
+  orderNumber: number; // human-friendly sequential number (e.g. 1001)
   customerId: string;
+  customerName: string; // denormalized for list display
   status: OrderStatus;
   hasPickupDelivery: boolean;
   /** Final cost is null until weighed laundry has been weighed after wash (Module 2). */
@@ -48,6 +50,9 @@ export interface Order {
   paymentLink?: string;
   paymentLinkExpiresAt?: TS;
   paid?: boolean;
+  paidAt?: TS;
+  invoiceId?: string | null; // Morning document id (private customers)
+  invoiceUrl?: string | null; // link to the issued חשבונית מס קבלה PDF
   createdAt: TS;
   updatedAt: TS;
 }
@@ -117,6 +122,7 @@ export interface MessageTemplates {
   orderReadyDelivery: string;
   debtReminder: string;
   rentalOverdueReminder: string;
+  invoiceIssued: string;
 }
 
 export interface Settings {

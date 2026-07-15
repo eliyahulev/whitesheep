@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
 import { loadSettings } from '@/services/settingsService';
 import type { Settings } from '@/types/models';
-import { Bidi } from '@/ui/Bidi';
-import { formatCurrency } from '@/utils/format';
+import { Tag } from '@/ui/Tag';
+import { Money, Num } from '@/ui/Num';
 
 // Read-only settings preview for Module 0 — confirms the settings doc exists and is
 // readable through the settings service. The full editable Settings screen is Module 10.
@@ -16,67 +22,66 @@ export function SettingsScreen() {
       .catch(() => setError('טעינת ההגדרות נכשלה'));
   }, []);
 
-  if (error) return <div className="error-banner">{error}</div>;
-  if (!settings) return <p className="muted">טוען הגדרות…</p>;
+  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!settings) return <Typography variant="body2">טוען הגדרות…</Typography>;
 
   return (
-    <div className="stack">
-      <div>
-        <div className="eyebrow">מודול 0 · תצוגה בלבד</div>
-        <h1 className="page-title">הגדרות</h1>
-        <p className="page-sub">
-          נטען דרך שירות ההגדרות מהמסמך <code className="mono">settings/global</code>. עורך מלא ייבנה
-          במודול 10.
-        </p>
-      </div>
+    <Stack spacing={2} className="fade-in">
+      <Box>
+        <Typography variant="overline">מודול 0 · תצוגה בלבד</Typography>
+        <Typography variant="h1">הגדרות</Typography>
+        <Typography variant="body2" sx={{ mt: 0.5 }}>
+          נטען דרך שירות ההגדרות מהמסמך <code>settings/global</code>. עורך מלא ייבנה במודול 10.
+        </Typography>
+      </Box>
 
-      <div className="card stack">
-        <h2 className="section-h">מחירון</h2>
-        <div className="muted">
-          כביסה במשקל (לק"ג):{' '}
-          <Bidi>
-            <span className="num">{formatCurrency(settings.prices.weighedLaundryPerKg)}</span>
-          </Bidi>
-        </div>
-        <div className="muted">
-          גיהוץ (לפריט):{' '}
-          <Bidi>
-            <span className="num">{formatCurrency(settings.prices.ironingPerItem)}</span>
-          </Bidi>
-        </div>
-        <div className="muted">
-          ניקוי יבש (לפריט):{' '}
-          <Bidi>
-            <span className="num">{formatCurrency(settings.prices.dryCleaningPerItem)}</span>
-          </Bidi>
-        </div>
-      </div>
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">מחירון</Typography>
+            <Typography variant="body2">
+              כביסה במשקל (לק"ג): <Money value={settings.prices.weighedLaundryPerKg} />
+            </Typography>
+            <Typography variant="body2">
+              גיהוץ (לפריט): <Money value={settings.prices.ironingPerItem} />
+            </Typography>
+            <Typography variant="body2">
+              ניקוי יבש (לפריט): <Money value={settings.prices.dryCleaningPerItem} />
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <div className="card stack">
-        <h2 className="section-h">תשלומים ותזכורות</h2>
-        <div className="muted">
-          תוקף קישור תשלום: <Bidi><span className="num">{settings.paymentLinkExpiryHours}</span></Bidi>{' '}
-          שעות
-        </div>
-        <div className="muted">
-          מרווחי תזכורת (ימים):{' '}
-          <Bidi>
-            <span className="num">{settings.reminderIntervalsDays.join(', ')}</span>
-          </Bidi>
-        </div>
-      </div>
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">תשלומים ותזכורות</Typography>
+            <Typography variant="body2">
+              תוקף קישור תשלום: <Num>{settings.paymentLinkExpiryHours}</Num> שעות
+            </Typography>
+            <Typography variant="body2">
+              מרווחי תזכורת (ימים): <Num>{settings.reminderIntervalsDays.join(', ')}</Num>
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <div className="card stack">
-        <h2 className="section-h">תבניות הודעה</h2>
-        {Object.entries(settings.templates).map(([key, val]) => (
-          <div key={key} className="stack" style={{ gap: 4 }}>
-            <span className="tag accent" style={{ alignSelf: 'flex-start' }}>{key}</span>
-            <p className="muted" style={{ margin: 0 }}>
-              {val}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
+      <Card>
+        <CardContent>
+          <Stack spacing={1.5}>
+            <Typography variant="h3">תבניות הודעה</Typography>
+            {Object.entries(settings.templates).map(([key, val]) => (
+              <Box
+                key={key}
+                sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.75 }}
+              >
+                <Tag tone="teal">{key}</Tag>
+                <Typography variant="body2">{val}</Typography>
+              </Box>
+            ))}
+          </Stack>
+        </CardContent>
+      </Card>
+    </Stack>
   );
 }

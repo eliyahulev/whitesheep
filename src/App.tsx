@@ -6,6 +6,12 @@ import { LoginScreen } from '@/screens/LoginScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { AuditPlaceholderScreen } from '@/screens/AuditPlaceholderScreen';
+import { CustomersListScreen } from '@/screens/customers/CustomersListScreen';
+import { CustomerFormScreen } from '@/screens/customers/CustomerFormScreen';
+import { CustomerDetailScreen } from '@/screens/customers/CustomerDetailScreen';
+import { OrdersListScreen } from '@/screens/orders/OrdersListScreen';
+import { OrderCreateScreen } from '@/screens/orders/OrderCreateScreen';
+import { OrderDetailScreen } from '@/screens/orders/OrderDetailScreen';
 
 export default function App() {
   return (
@@ -21,6 +27,13 @@ export default function App() {
             }
           >
             <Route path="/" element={<HomeScreen />} />
+            <Route path="/customers" element={<CustomersListScreen />} />
+            <Route path="/customers/new" element={<CustomerFormScreen />} />
+            <Route path="/customers/:id" element={<CustomerDetailScreen />} />
+            <Route path="/customers/:id/edit" element={<CustomerFormScreen />} />
+            <Route path="/orders" element={<OrdersListScreen />} />
+            <Route path="/orders/new" element={<OrderCreateScreen />} />
+            <Route path="/orders/:id" element={<OrderDetailScreen />} />
             <Route
               path="/settings"
               element={

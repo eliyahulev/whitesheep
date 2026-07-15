@@ -32,18 +32,23 @@ ROLES:
 
 WORKING STYLE: Build one module at a time. After each module, summarize what changed, list any new env vars/config, and stop. Do not build features from later modules early.
 
-## Design system — "כבשה לבנה / White Sheep" (apply to every module)
-Brand: **כבשה לבנה** (White Sheep). Mobile-first, calm all-day operational tool.
-- Palette (CSS vars in `src/styles.css`): `--paper #f4f6f2` (cool wool), `--ink #1e2a28`,
-  `--accent #17756b` (fresh eucalyptus), `--wool #e9e3d6`, `--sun #e4a93c`, `--danger #b8442d`.
-- Type: `--font-display` Frank Ruhl Libre (headings/brand, restrained) · `--font-ui` Assistant
-  (UI) · `--font-mono` IBM Plex Mono for ALL numeric data (prices, weights, ids, phones) —
-  wrap numbers in `<Bidi>` + `className="num"`.
-- Signature component: the **laundry tag** — `<Tag tone="wool|accent|sun|danger|success">`
-  (punched-paper chip). Use for statuses, customer types, inventory categories everywhere.
-- Brand mark: `<SheepMark />`. Eyebrow labels: `.eyebrow`. Section headers: `.section-h`.
-- Layout: bottom-nav on mobile, right sidebar ≥900px (nav sits on the RIGHT in RTL).
-- Always use logical properties (never left/right). Reuse `.card`, `.btn`, `.stack`, `.tag`.
+## Design system — **Material Design (MUI)**. Apply to EVERY module. Full spec: `DESIGN_SYSTEM.md`
+Base = `@mui/material` v9 themed with the brand. Theme = `src/theme.ts` (source of truth);
+providers in `src/main.tsx` (RTL Emotion cache → ThemeProvider → CssBaseline). Font: **Heebo**.
+Icons: **Material Symbols Rounded** via `<Icon name="…" />` (index.html loads the font).
+- Palette (MUI tokens): `primary` teal `#0a7d88` (brand/chrome/links), `secondary` amber
+  `#ef8a46` (**primary action button** — `color="secondary"`), `error #dc2626`, `success #16a34a`,
+  `warning #e08a00`, `background.default #f4f7f8`, `text.primary #1c2b2e`.
+- Use MUI directly: `<Button/Card/CardContent/TextField/Typography/Stack/Box>`. Vertical =
+  `<Stack spacing>`; horizontal rows = `<Box sx={{display:'flex',gap,flexWrap}}>` (v9 Stack
+  rejects inline alignItems/flexWrap/useFlexGap). TextField LTR fields:
+  `slotProps={{ htmlInput:{ dir:'ltr' } }}`.
+- App components in `src/ui/`: `<Tag tone=neutral|teal|teal-solid|amber|success|danger|purple>`,
+  `<Badge>`, `<Stat>`, `<Icon>`, `<Num>/<Money>/<Weight>/<Phone>/<DateText>`, `<Bidi>`,
+  `<SheepMark>`, `<AppShell>`.
+- Order-status → Tag tone: received=teal-solid, in_progress=teal, ready=amber, delivered=success,
+  debt=danger. Always wrap numbers in a `<Num>`-family component. No hard-coded hex/px — theme only.
+- Layout: mobile-first — MUI AppBar + BottomNavigation on mobile → right sidebar ≥md. RTL via theme.
 
 ## Local emulator note
 The Firebase **emulator suite requires Java** (Google ships it as a Java app) — install via
@@ -53,10 +58,20 @@ Java is NOT an app/production dependency — only for local emulators. Productio
 
 ## Build progress
 - [x] Module 0 — Foundation & Scaffolding ✓ verified end-to-end (both roles, rules, logAction)
-- [ ] Module 1 — Customers & Service Types
-- [ ] Module 2 — Orders & Order Lifecycle
-- [ ] Module 3 — Messaging Integration
-- [ ] Module 4 — Payments, Checkout Link & Invoice
+- [x] Module 1 — Customers & Service Types ✓ CRUD + search + roles (employee no-delete, UI+rules) verified
+      · `customersService.ts`, `serviceCatalog.ts`, `src/screens/customers/*`, nav "לקוחות"
+- [x] Module 2 — Orders & Order Lifecycle ✓ create/weigh-after-wash/status transitions + drop-off stub verified
+      · `ordersService.ts`, `messageTemplates.ts`, `src/screens/orders/*`, nav "הזמנות", order-number counter
+      · Firestore init uses `ignoreUndefinedProperties: true` (see src/firebase/config.ts)
+- [x] Module 3 — Messaging Integration ✓ real provider via `sendSms` Cloud Function; drop-off + both
+      ready paths (self-pickup / delivery w/ cost + payment-link placeholder) + guard + logging verified
+      · `functions/` (Twilio provider + simulate fallback), client routes non-stub via httpsCallable
+      · settings.integrations.smsProvider='twilio'; `npm run emulators` now includes functions
+- [x] Module 4 — Payments, Checkout Link & Invoice ✓ Morning payment link + settle → חשבונית מס קבלה
+      (type 320) for private, payment recorded; institutional deferred to M8. Both paths verified.
+      · `functions/src/morning.ts` (Green Invoice API + simulate fallback), callables
+        `createOrderPaymentLink` + `settleOrderPayment`; client `paymentsService.ts`; order-detail תשלום card
+      · Morning env (functions): MORNING_ENV / MORNING_API_ID / MORNING_API_SECRET (absent → simulated)
 - [ ] Module 5 — Debt Engine
 - [ ] Module 6 — Rental & Inventory + Overdue Alerts
 - [ ] Module 7 — Audit Log Viewer
