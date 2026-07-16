@@ -28,7 +28,7 @@ import type { Order, OrderItem } from '@/types/models';
 import { Icon } from '@/ui/Icon';
 import { Tag } from '@/ui/Tag';
 import { Money, Num } from '@/ui/Num';
-import { toDate, formatDateTime } from '@/utils/format';
+import { toDate, formatDate, formatDateTime } from '@/utils/format';
 
 function WeighRow({ order, item, user }: { order: Order; item: OrderItem; user: ReturnType<typeof useAuth>['user'] }) {
   const [kg, setKg] = useState('');
@@ -270,13 +270,23 @@ export function OrderDetailScreen() {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ fontWeight: 700 }}>{serviceLabel(it.service)}</Typography>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {it.service === 'weighed_laundry'
-                          ? it.weightKg != null
-                            ? <>משקל: <Num>{it.weightKg}</Num> ק"ג</>
-                            : 'ממתין לשקילה'
-                          : it.quantity
-                            ? <><Num>{it.quantity}</Num>× {it.description || ''}</>
-                            : it.description || ''}
+                        {it.service === 'weighed_laundry' ? (
+                          it.weightKg != null ? (
+                            <>משקל: <Num>{it.weightKg}</Num> ק"ג</>
+                          ) : (
+                            'ממתין לשקילה'
+                          )
+                        ) : it.service === 'rental' ? (
+                          <>
+                            {it.quantity ? <><Num>{it.quantity}</Num>× </> : ''}
+                            {it.description || ''}
+                            {toDate(it.expectedReturnAt) ? ` · החזרה עד ${formatDate(toDate(it.expectedReturnAt)!)}` : ''}
+                          </>
+                        ) : it.quantity ? (
+                          <><Num>{it.quantity}</Num>× {it.description || ''}</>
+                        ) : (
+                          it.description || ''
+                        )}
                       </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'end' }}>

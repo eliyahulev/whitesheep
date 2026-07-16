@@ -24,7 +24,7 @@ function GoogleG() {
 }
 
 export function LoginScreen() {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, deniedEmail } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,8 +56,8 @@ export function LoginScreen() {
       setError(
         code === 'auth/operation-not-allowed'
           ? 'התחברות Google אינה מופעלת עדיין בפרויקט. הפעילו אותה בקונסולת Firebase.'
-          : code === 'auth/popup-closed-by-user'
-            ? ''
+          : code === 'auth/popup-closed-by-user' || code === 'app/not-authorized'
+            ? '' // 'app/not-authorized' is shown via the deniedEmail alert below
             : 'התחברות עם Google נכשלה.',
       );
     } finally {
@@ -76,6 +76,12 @@ export function LoginScreen() {
             </Typography>
             <Typography variant="body2">מערכת ניהול מכבסה · התחברות לצוות</Typography>
           </Box>
+
+          {deniedEmail && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              החשבון <bdi>{deniedEmail}</bdi> אינו מורשה לגשת למערכת. פנו למנהל להוספת המשתמש.
+            </Alert>
+          )}
 
           <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {error && <Alert severity="error">{error}</Alert>}

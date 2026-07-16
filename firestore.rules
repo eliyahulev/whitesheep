@@ -70,6 +70,13 @@ service cloud.firestore {
       allow read, write: if isManager();
     }
 
+    // Users/invites: managers may read (User Management screen). All writes go through
+    // manager-only Cloud Functions (Admin SDK), which also set the Auth role claims.
+    match /users/{id} {
+      allow read: if isManager();
+      allow write: if false;
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;

@@ -11,6 +11,7 @@ export const col = {
   payments: collection(db, 'payments'),
   auditLog: collection(db, 'auditLog'),
   settings: collection(db, 'settings'),
+  users: collection(db, 'users'),
 } as const;
 
 /** The single global settings document. */

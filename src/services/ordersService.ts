@@ -9,12 +9,11 @@ import {
   serverTimestamp,
   updateDoc,
   where,
-  writeBatch,
   Timestamp,
 } from 'firebase/firestore';
 import { col } from '@/firebase/collections';
 import { db } from '@/firebase/config';
-import type { Customer, Order, OrderItem, OrderStatus, ServiceType } from '@/types/models';
+import type { Customer, InventoryItem, Order, OrderItem, OrderStatus, ServiceType } from '@/types/models';
 import { loadSettings } from './settingsService';
 import { getMessagingProvider, type SendResult } from './integrations/messaging';
 import { getCustomer } from './customersService';
@@ -33,8 +32,12 @@ export function paymentLinkPlaceholder(order: Order): string {
 // --- Draft shapes used by the create form ---
 export interface OrderItemDraft {
   service: ServiceType;
-  quantity?: number; // ironing / dry_cleaning
+  quantity?: number; // ironing / dry_cleaning / rental
   description?: string;
+  // rental only: which inventory item + when it's due back
+  inventoryItemId?: string;
+  itemName?: string;
+  expectedReturnAt?: Date | null;
 }
 export interface OrderDraft {
   hasPickupDelivery: boolean;
@@ -48,7 +51,10 @@ type Prices = Awaited<ReturnType<typeof loadSettings>>['prices'];
 function priceItem(
   draft: OrderItemDraft,
   prices: Prices,
-): Pick<OrderItem, 'service' | 'quantity' | 'description' | 'unitPrice' | 'lineTotal' | 'weightKg'> {
+): Pick<
+  OrderItem,
+  'service' | 'quantity' | 'description' | 'unitPrice' | 'lineTotal' | 'weightKg' | 'inventoryItemId' | 'expectedReturnAt'
+> {
   switch (draft.service) {
     case 'weighed_laundry':
       return { service: 'weighed_laundry', unitPrice: prices.weighedLaundryPerKg }; // lineTotal after weighing
@@ -69,8 +75,17 @@ function priceItem(
         lineTotal: (draft.quantity ?? 1) * prices.dryCleaningPerItem,
       };
     case 'rental':
-      // Placeholder — full rental pricing is Module 6.
-      return { service: 'rental', description: draft.description, lineTotal: 0 };
+      // Rental lines are tracked against real inventory (stock + return) rather than priced —
+      // inventory has no monetary rate, so the line total is 0. Stock decrement + the linked
+      // rental record are created atomically in createOrder.
+      return {
+        service: 'rental',
+        quantity: draft.quantity ?? 1,
+        description: draft.itemName ?? draft.description,
+        inventoryItemId: draft.inventoryItemId,
+        expectedReturnAt: draft.expectedReturnAt ? Timestamp.fromDate(draft.expectedReturnAt) : null,
+        lineTotal: 0,
+      };
   }
 }
 
@@ -101,31 +116,83 @@ export async function createOrder(
   const orderRef = doc(col.orders);
   const counterRef = doc(db, 'counters', 'orders');
 
-  // Reserve the next sequential number atomically.
+  // Rental lines that reference real inventory — these drive stock decrement + a linked rental.
+  const rentalDrafts = draft.items
+    .map((d, index) => ({ d, index }))
+    .filter(({ d }) => d.service === 'rental' && d.inventoryItemId);
+
+  // Everything (number, stock, order, items, rentals) commits atomically so nothing gets out of
+  // sync: if stock is insufficient the whole order is rejected and no partial state is written.
   const orderNumber = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(counterRef);
-    const next = ((snap.exists() ? (snap.data().next as number) : 1000) || 1000) + 1;
+    // --- reads first (Firestore requires all reads before any write) ---
+    const counterSnap = await tx.get(counterRef);
+    const invSnaps = await Promise.all(
+      rentalDrafts.map(({ d }) => tx.get(doc(db, 'inventoryItems', d.inventoryItemId!))),
+    );
+    invSnaps.forEach((snap, i) => {
+      const { d } = rentalDrafts[i];
+      const qty = d.quantity ?? 1;
+      if (!snap.exists()) throw new Error(`פריט המלאי "${d.itemName ?? ''}" לא נמצא`);
+      const it = snap.data() as InventoryItem;
+      if (it.availableQuantity < qty) {
+        throw new Error(`אין מספיק "${it.name}" במלאי (זמין: ${it.availableQuantity})`);
+      }
+    });
+
+    const next = ((counterSnap.exists() ? (counterSnap.data().next as number) : 1000) || 1000) + 1;
+
+    // --- writes ---
     tx.set(counterRef, { next }, { merge: true });
+
+    // Decrement stock + create a linked rental per rental line; remember each rentalId so the
+    // matching order item can point back to it.
+    const rentalIdByIndex = new Map<number, string>();
+    invSnaps.forEach((snap, i) => {
+      const { d, index } = rentalDrafts[i];
+      const it = snap.data() as InventoryItem;
+      const qty = d.quantity ?? 1;
+      tx.update(snap.ref, {
+        availableQuantity: it.availableQuantity - qty,
+        updatedAt: serverTimestamp(),
+      });
+      const rentalRef = doc(col.rentals);
+      tx.set(rentalRef, {
+        customerId: customer.id,
+        customerName: customer.name,
+        lines: [{ inventoryItemId: d.inventoryItemId, itemName: d.itemName ?? it.name, quantity: qty }],
+        rentedAt: serverTimestamp(),
+        expectedReturnAt: d.expectedReturnAt ? Timestamp.fromDate(d.expectedReturnAt) : null,
+        returnedAt: null,
+        overdueAlerted: false,
+        orderId: orderRef.id,
+        orderNumber: next,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      rentalIdByIndex.set(index, rentalRef.id);
+    });
+
+    tx.set(orderRef, {
+      orderNumber: next,
+      customerId: customer.id,
+      customerName: customer.name,
+      status: 'received' as OrderStatus,
+      hasPickupDelivery: draft.hasPickupDelivery,
+      finalCost,
+      expectedReadyAt: toDate(draft.expectedReadyAt),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    priced.forEach((item, index) => {
+      tx.set(doc(col.orderItems), {
+        orderId: orderRef.id,
+        ...item,
+        ...(rentalIdByIndex.has(index) ? { rentalId: rentalIdByIndex.get(index) } : {}),
+      });
+    });
+
     return next;
   });
-
-  // Write the order + its items together so they can't get out of sync.
-  const batch = writeBatch(db);
-  batch.set(orderRef, {
-    orderNumber,
-    customerId: customer.id,
-    customerName: customer.name,
-    status: 'received' as OrderStatus,
-    hasPickupDelivery: draft.hasPickupDelivery,
-    finalCost,
-    expectedReadyAt: toDate(draft.expectedReadyAt),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  for (const item of priced) {
-    batch.set(doc(col.orderItems), { orderId: orderRef.id, ...item });
-  }
-  await batch.commit();
 
   // Drop-off message (stubbed provider for now — real provider is Module 3).
   const body = fillTemplate(settings.templates.orderDropOff, {
@@ -140,7 +207,14 @@ export async function createOrder(
       ? ' · נשלחה הודעת קבלה (סימולציה)'
       : ' · נשלחה הודעת קבלה'
     : ` · שליחת הודעת הקבלה נכשלה — ${res.error ?? ''}`;
-  await logAction(user, 'order', `יצירת הזמנה #${orderNumber} עבור ${customer.name}${sendNote}`);
+  const rentalNote = rentalDrafts.length
+    ? ` · הושכרו ${rentalDrafts.length} פריטי ציוד (המלאי עודכן)`
+    : '';
+  await logAction(
+    user,
+    'order',
+    `יצירת הזמנה #${orderNumber} עבור ${customer.name}${rentalNote}${sendNote}`,
+  );
 
   return { id: orderRef.id, orderNumber };
 }

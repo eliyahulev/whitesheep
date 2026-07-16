@@ -16,6 +16,7 @@ import { DebtorsScreen } from '@/screens/debtors/DebtorsScreen';
 import { InventoryScreen } from '@/screens/inventory/InventoryScreen';
 import { RentalCreateScreen } from '@/screens/inventory/RentalCreateScreen';
 import { MonthlyInvoicingScreen } from '@/screens/invoicing/MonthlyInvoicingScreen';
+import { UsersScreen } from '@/screens/users/UsersScreen';
 
 export default function App() {
   return (
@@ -53,6 +54,14 @@ export default function App() {
               element={
                 <RequireAuth role="manager">
                   <MonthlyInvoicingScreen />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <RequireAuth role="manager">
+                  <UsersScreen />
                 </RequireAuth>
               }
             />

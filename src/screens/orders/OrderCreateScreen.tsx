@@ -17,10 +17,13 @@ import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
 import { useAuth } from '@/auth/AuthContext';
 import { watchCustomers } from '@/services/customersService';
+import { watchInventory } from '@/services/inventoryService';
 import { createOrder, type OrderItemDraft } from '@/services/ordersService';
 import { SERVICE_CATALOG, serviceLabel } from '@/services/serviceCatalog';
-import type { Customer, ServiceType } from '@/types/models';
+import type { Customer, InventoryItem, ServiceType } from '@/types/models';
 import { Icon } from '@/ui/Icon';
+import { Num } from '@/ui/Num';
+import { formatDate } from '@/utils/format';
 
 export function OrderCreateScreen() {
   const { user } = useAuth();
@@ -28,6 +31,7 @@ export function OrderCreateScreen() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [items, setItems] = useState<OrderItemDraft[]>([]);
   const [hasPickupDelivery, setHasPickupDelivery] = useState(false);
   const [expectedReadyAt, setExpectedReadyAt] = useState('');
@@ -38,15 +42,49 @@ export function OrderCreateScreen() {
   const [svc, setSvc] = useState<ServiceType>('weighed_laundry');
   const [qty, setQty] = useState('1');
   const [desc, setDesc] = useState('');
+  // rental-specific draft fields
+  const [rentalItem, setRentalItem] = useState<InventoryItem | null>(null);
+  const [returnAt, setReturnAt] = useState('');
 
   useEffect(() => watchCustomers(setCustomers), []);
+  useEffect(() => watchInventory(setInventory), []);
 
-  const needsQty = svc === 'ironing' || svc === 'dry_cleaning';
-  const needsDesc = svc === 'ironing' || svc === 'dry_cleaning' || svc === 'rental';
+  const isRental = svc === 'rental';
+  const needsQty = svc === 'ironing' || svc === 'dry_cleaning' || isRental;
+  const needsDesc = svc === 'ironing' || svc === 'dry_cleaning';
+
+  const qtyNum = Math.max(1, parseInt(qty, 10) || 1);
+  // Units of the selected item already reserved by rental lines in this draft.
+  const reservedInDraft = (id: string) =>
+    items
+      .filter((it) => it.service === 'rental' && it.inventoryItemId === id)
+      .reduce((sum, it) => sum + (it.quantity ?? 0), 0);
+  const rentalRemaining = rentalItem
+    ? rentalItem.availableQuantity - reservedInDraft(rentalItem.id)
+    : 0;
+  const rentalOverStock = isRental && !!rentalItem && qtyNum > rentalRemaining;
+  const canAddRental = !!rentalItem && !!returnAt && !rentalOverStock;
 
   function addItem() {
+    if (isRental) {
+      if (!canAddRental || !rentalItem) return;
+      setItems((prev) => [
+        ...prev,
+        {
+          service: 'rental',
+          inventoryItemId: rentalItem.id,
+          itemName: rentalItem.name,
+          quantity: qtyNum,
+          expectedReturnAt: new Date(returnAt),
+        },
+      ]);
+      setRentalItem(null);
+      setQty('1');
+      setReturnAt('');
+      return;
+    }
     const item: OrderItemDraft = { service: svc };
-    if (needsQty) item.quantity = Math.max(1, parseInt(qty, 10) || 1);
+    if (needsQty) item.quantity = qtyNum;
     if (needsDesc && desc.trim()) item.description = desc.trim();
     setItems((prev) => [...prev, item]);
     setQty('1');
@@ -73,8 +111,9 @@ export function OrderCreateScreen() {
         user,
       );
       navigate(`/orders/${id}`, { replace: true, state: { justCreated: true } });
-    } catch {
-      setError('יצירת ההזמנה נכשלה. נסו שוב.');
+    } catch (e) {
+      // Surface the real reason (e.g. insufficient rental stock) when we have one.
+      setError((e as Error)?.message || 'יצירת ההזמנה נכשלה. נסו שוב.');
       setSaving(false);
     }
   }
@@ -83,6 +122,10 @@ export function OrderCreateScreen() {
     const label = serviceLabel(it.service);
     if (it.service === 'weighed_laundry') return `${label} · משקל ייקבע לאחר כביסה`;
     const q = it.quantity ? `${it.quantity}× ` : '';
+    if (it.service === 'rental') {
+      const ret = it.expectedReturnAt ? ` · החזרה עד ${formatDate(it.expectedReturnAt)}` : '';
+      return `${q}${it.itemName ?? label}${ret}`;
+    }
     return `${q}${label}${it.description ? ` · ${it.description}` : ''}`;
   }
 
@@ -168,34 +211,92 @@ export function OrderCreateScreen() {
               </Alert>
             )}
 
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              {needsQty && (
-                <TextField
-                  label="כמות"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  sx={{ width: 100 }}
-                  slotProps={{ htmlInput: { dir: 'ltr', inputMode: 'numeric' } }}
-                />
-              )}
-              {needsDesc && (
-                <TextField
-                  label={svc === 'rental' ? 'תיאור הפריט' : 'תיאור (לדוגמה: חולצות)'}
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                  sx={{ flex: 1, minWidth: 160 }}
-                />
-              )}
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<Icon name="add" size={18} />}
-                onClick={addItem}
-                sx={{ minHeight: 56 }}
-              >
-                הוסף
-              </Button>
-            </Box>
+            {isRental && inventory.length === 0 && (
+              <Alert severity="warning" icon={<Icon name="inventory_2" size={20} />}>
+                אין פריטי מלאי להשכרה. הוסיפו פריטים במסך "השכרות ומלאי".
+              </Alert>
+            )}
+
+            {isRental && inventory.length > 0 && (
+              <Autocomplete
+                options={inventory}
+                value={rentalItem}
+                onChange={(_, v) => setRentalItem(v)}
+                getOptionLabel={(o) => o.name}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                getOptionDisabled={(o) => o.availableQuantity - reservedInDraft(o.id) <= 0}
+                noOptionsText="אין פריטים"
+                renderOption={(props, o) => {
+                  const remaining = o.availableQuantity - reservedInDraft(o.id);
+                  return (
+                    <li {...props} key={o.id}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 1 }}>
+                        <span>{o.name}</span>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          זמין: <Num>{remaining}</Num>
+                        </Typography>
+                      </Box>
+                    </li>
+                  );
+                }}
+                renderInput={(params) => <TextField {...params} label="פריט מלאי להשכרה" />}
+              />
+            )}
+
+            {(needsQty || isRental || needsDesc) && (
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                {needsQty && (
+                  <TextField
+                    label="כמות"
+                    value={qty}
+                    onChange={(e) => setQty(e.target.value)}
+                    sx={{ width: { xs: '100%', sm: 110 } }}
+                    slotProps={{ htmlInput: { dir: 'ltr', inputMode: 'numeric' } }}
+                  />
+                )}
+                {isRental && (
+                  <TextField
+                    label="להחזרה עד"
+                    type="date"
+                    value={returnAt}
+                    onChange={(e) => setReturnAt(e.target.value)}
+                    sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
+                    slotProps={{ inputLabel: { shrink: true }, htmlInput: { dir: 'ltr' } }}
+                  />
+                )}
+                {needsDesc && (
+                  <TextField
+                    label="תיאור (לדוגמה: חולצות)"
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                    sx={{ flex: 1, minWidth: { xs: '100%', sm: 200 } }}
+                  />
+                )}
+              </Box>
+            )}
+
+            <Button
+              variant="outlined"
+              color="primary"
+              fullWidth
+              startIcon={<Icon name="add" size={18} />}
+              onClick={addItem}
+              disabled={isRental && !canAddRental}
+              sx={{ minHeight: 48 }}
+            >
+              הוסף פריט
+            </Button>
+
+            {rentalOverStock && (
+              <Typography variant="caption" sx={{ color: 'error.main' }}>
+                הכמות המבוקשת חורגת מהמלאי הזמין (<Num>{rentalRemaining}</Num>).
+              </Typography>
+            )}
+            {isRental && rentalItem && !rentalOverStock && (
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                זמין להשכרה: <Num>{rentalRemaining}</Num> יח'.
+              </Typography>
+            )}
           </Stack>
         </CardContent>
       </Card>

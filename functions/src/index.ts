@@ -9,6 +9,15 @@ import { resolveProvider, type SendResult } from './messaging';
 import { resolveInvoiceProvider, DOC_TYPE } from './morning';
 import { markExpiredDebts, sendDueReminders } from './debt';
 import { markOverdueRentals } from './rentals';
+import {
+  listAppUsers,
+  inviteUser as inviteUserImpl,
+  setUserRole as setUserRoleImpl,
+  removeUser as removeUserImpl,
+  isLastManager,
+  emailKey,
+  type AppRole,
+} from './users';
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 initializeApp();
@@ -21,12 +30,47 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'eliyahu.lev@gmail.com')
   .filter(Boolean);
 
 /**
- * On user creation (email/password or Google), assign the role custom claim:
- * manager for allowlisted admin emails, employee otherwise. Enforced by rules + UI.
+ * On user creation (Google/email+password), assign the role custom claim.
+ * Access is invite-only: a user gets in ONLY if they were added first —
+ *   1. a pending `users/{email}` invite  → that invite's role, marked active, or
+ *   2. an ADMIN_EMAILS bootstrap admin    → manager (so the first admin can get in).
+ * Anyone else is assigned role 'none' and denied by the app (see AuthContext).
  */
 export const assignRoleOnCreate = functionsV1.auth.user().onCreate(async (user) => {
   const email = (user.email ?? '').toLowerCase();
-  const role = ADMIN_EMAILS.includes(email) ? 'manager' : 'employee';
+  let role: 'manager' | 'employee' | 'none' = 'none';
+
+  if (email) {
+    const ref = db.collection('users').doc(email);
+    const invite = await ref.get();
+    if (invite.exists) {
+      role = invite.data()?.role === 'manager' ? 'manager' : 'employee';
+      await ref.set(
+        {
+          status: 'active',
+          uid: user.uid,
+          displayName: user.displayName ?? null,
+          lastSignInAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } else if (ADMIN_EMAILS.includes(email)) {
+      role = 'manager';
+      await ref.set({
+        email,
+        role: 'manager',
+        status: 'active',
+        uid: user.uid,
+        displayName: user.displayName ?? null,
+        invitedBy: 'system (bootstrap)',
+        lastSignInAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   await getAuth().setCustomUserClaims(user.uid, { role });
   console.log(`[assignRoleOnCreate] ${email || user.uid} -> ${role}`);
 });
@@ -54,6 +98,14 @@ async function serverLog(
     description,
     createdAt: FieldValue.serverTimestamp(),
   });
+}
+
+function requireManager(req: CallableRequest): { uid: string; name: string } {
+  const actor = requireStaff(req);
+  if (req.auth?.token.role !== 'manager') {
+    throw new HttpsError('permission-denied', 'רק מנהל יכול לנהל משתמשים.');
+  }
+  return actor;
 }
 
 function fillTemplate(tpl: string, vars: Record<string, string>): string {
@@ -389,4 +441,78 @@ export const issueMonthlyInvoice = onCall<{ customerId: string }>(async (req) =>
     total,
     simulated: docRes.simulated ?? false,
   };
+});
+
+// ============================================================
+// User management (manager-only) — add / remove / manage users & roles.
+// Custom claims can only be set server-side, so all of this runs behind callables.
+// ============================================================
+
+const roleLabel = (r: AppRole) => (r === 'manager' ? 'מנהל' : 'עובד');
+
+function requireRole(v: unknown): AppRole {
+  if (v !== 'employee' && v !== 'manager') {
+    throw new HttpsError('invalid-argument', 'תפקיד לא תקין.');
+  }
+  return v;
+}
+
+function requireEmail(v: unknown): string {
+  const email = emailKey(v as string);
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'כתובת אימייל לא תקינה.');
+  }
+  return email;
+}
+
+/** List all users (Auth accounts merged with pending invites). Manager-only. */
+export const listUsers = onCall(async (req) => {
+  requireManager(req);
+  return { users: await listAppUsers(db) };
+});
+
+/** Invite / authorize a user with a role. Manager-only. */
+export const inviteUser = onCall<{ email: string; role: string }>(async (req) => {
+  const actor = requireManager(req);
+  const email = requireEmail(req.data?.email);
+  const role = requireRole(req.data?.role);
+  const res = await inviteUserImpl(db, email, role, actor.name);
+  await serverLog(
+    actor,
+    'system',
+    `הוספת משתמש ${email} בתפקיד ${roleLabel(role)}` +
+      (res.status === 'active' ? ' (חשבון קיים — התפקיד הוחל מיד)' : ' (הזמנה — יופעל בכניסה הראשונה)'),
+  );
+  return res;
+});
+
+/** Change a user's role. Manager-only; can't change your own or the last manager's. */
+export const setUserRole = onCall<{ email: string; role: string }>(async (req) => {
+  const actor = requireManager(req);
+  const email = requireEmail(req.data?.email);
+  const role = requireRole(req.data?.role);
+  if (email === emailKey(req.auth?.token.email as string)) {
+    throw new HttpsError('failed-precondition', 'אי אפשר לשנות את התפקיד של עצמך.');
+  }
+  if (role !== 'manager' && (await isLastManager(db, email))) {
+    throw new HttpsError('failed-precondition', 'לא ניתן להוריד תפקיד למנהל האחרון במערכת.');
+  }
+  await setUserRoleImpl(db, email, role);
+  await serverLog(actor, 'system', `שינוי תפקיד ל${email} → ${roleLabel(role)}`);
+  return { ok: true };
+});
+
+/** Remove a user entirely (delete account + doc). Manager-only; not self / last manager. */
+export const removeUser = onCall<{ email: string }>(async (req) => {
+  const actor = requireManager(req);
+  const email = requireEmail(req.data?.email);
+  if (email === emailKey(req.auth?.token.email as string)) {
+    throw new HttpsError('failed-precondition', 'אי אפשר להסיר את עצמך.');
+  }
+  if (await isLastManager(db, email)) {
+    throw new HttpsError('failed-precondition', 'לא ניתן להסיר את המנהל האחרון במערכת.');
+  }
+  await removeUserImpl(db, email);
+  await serverLog(actor, 'system', `הסרת משתמש ${email}`);
+  return { ok: true };
 });

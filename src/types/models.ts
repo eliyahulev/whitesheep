@@ -10,6 +10,18 @@ export type Role = 'employee' | 'manager';
 
 export type CustomerType = 'private' | 'institutional';
 
+/** A managed user in the User Management screen (Auth account or pending invite). */
+export type AppUserStatus = 'pending' | 'active' | 'unknown';
+
+export interface AppUser {
+  email: string;
+  role: Role | null; // null → signed in but not authorized
+  status: AppUserStatus; // pending = invited, active = has account+role, unknown = no role
+  uid: string | null;
+  displayName: string | null;
+  lastSignInAt: number | null; // epoch ms
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -76,6 +88,10 @@ export interface OrderItem {
   unitPrice?: number; // resolved from settings price list at time of pricing
   lineTotal?: number;
   description?: string; // e.g. "10 חולצות"
+  // rental lines: linked to a real inventory item + the rental record created on order save
+  inventoryItemId?: string;
+  rentalId?: string;
+  expectedReturnAt?: TS | null;
 }
 
 export interface InventoryItem {
@@ -96,6 +112,9 @@ export interface Rental {
   expectedReturnAt: TS;
   returnedAt?: TS | null;
   overdueAlerted?: boolean;
+  // set when the rental was created as part of an order (Module 2 rental line)
+  orderId?: string;
+  orderNumber?: number;
   createdAt: TS;
   updatedAt: TS;
 }

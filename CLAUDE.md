@@ -96,6 +96,18 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       role matrix (verified employee 403 on payments/settings-write/order-delete, 200 on order create),
       external calls wrapped+logged, `vercel.json` (Vite SPA rewrite) + README deploy docs.
       · Live deploy (Vercel + Firebase Blaze) is code-ready but needs the user's credentials to run.
+- [x] Module 11 — User Management (manager-only) ✓ INVITE-ONLY access: no one gets in unless added
+      first. Manager screen adds users (email + role → pending invite, or applied immediately if the
+      account already exists), changes roles, and removes users (deletes Auth account + doc). Verified
+      end-to-end (callables + assignRoleOnCreate gate + full browser UI flow).
+      · `functions/src/users.ts` (listAppUsers/inviteUser/setUserRole/removeUser/isLastManager, Admin SDK)
+      · index.ts: manager-gated callables `listUsers`/`inviteUser`/`setUserRole`/`removeUser` + `requireManager`
+      · `assignRoleOnCreate` REWRITTEN — invite (`users/{email}`) → that role+active; else ADMIN_EMAILS
+        bootstrap → manager; else role **'none'** (denied). No more silent employee fallback.
+      · AuthContext: only 'employee'/'manager' claims grant access; else denied + signed out + `deniedEmail`
+        message on LoginScreen. New `users` collection (rules: manager read, writes via functions only).
+      · `usersService.ts`, `src/screens/users/UsersScreen.tsx`, route `/users`, nav "משתמשים" (manager-only)
+      · Guards: can't change/remove self or the last manager (verified). Audit-logged (actionType 'system').
 
 ## Live deployment — status & what's still needed
 Live project: **Firebase `whitesheep-laundry`** (region me-west1) · **Vercel project `whitesheep`**
@@ -105,19 +117,24 @@ Done:
 - Firebase project + Firestore DB created; **security rules deployed**; Firestore + Identity Toolkit APIs enabled.
 - Web app created; `VITE_FIREBASE_*` + `VITE_USE_EMULATOR=false` set in Vercel (production).
 - **Frontend deployed** to Vercel prod (behind Vercel Deployment Protection → returns 302 until disabled).
-- App has **Google sign-in**; `assignRoleOnCreate` fn assigns `manager` to `ADMIN_EMAILS`
-  (default `eliyahu.lev@gmail.com`), else `employee`.
+- App has **Google sign-in**; access is **invite-only** (Module 11): `assignRoleOnCreate` grants the
+  role from a `users/{email}` invite, or `manager` to `ADMIN_EMAILS` (default `eliyahu.lev@gmail.com`)
+  as bootstrap; everyone else gets role `'none'` and is denied. Manager manages users at `/users`.
 
 Still needed (blockers first):
 1. **Enable Blaze billing** on `whitesheep-laundry` — currently `billingEnabled: false`. Functions
    can't deploy until this is done (link a billing account at console → usage/details → Modify plan).
 2. After Blaze → `firebase deploy --only functions` (deploys assignRoleOnCreate, sendSms,
    createOrderPaymentLink, settleOrderPayment, debtEngine+runDebtEngine, rentalOverdueSweep+
-   runRentalSweep, issueMonthlyInvoice; scheduled jobs create Cloud Scheduler entries).
+   runRentalSweep, issueMonthlyInvoice, and the Module 11 user-management callables
+   listUsers/inviteUser/setUserRole/removeUser; scheduled jobs create Cloud Scheduler entries).
+   ALSO redeploy rules (`firebase deploy --only firestore:rules`) for the new `users` collection.
 3. **Enable Google provider** + add the Vercel domain to Firebase **Authorized domains**
    (Auth → Settings) so Google pop-ups work on the live site.
-4. First Google sign-in must happen **after** functions deploy so the role claim is set
-   (sign in earlier → user created without claim → set it manually).
+4. First Google sign-in must happen **after** functions deploy so the role claim is set. The first
+   admin MUST be in `ADMIN_EMAILS` (bootstrap manager) or already invited — otherwise they get role
+   `'none'` and are denied. If someone signed in before deploy (no/`none` claim), invite them from
+   `/users` (or set the claim manually) so the next sign-in is authorized.
 5. Optional: add real **Twilio** (`TWILIO_*`) + **Morning** (`MORNING_*`) secrets to `functions/.env`
    (else messaging/invoicing run in simulated mode). Admin allowlist override: `ADMIN_EMAILS`.
 6. Optional: disable Vercel **Deployment Protection** to make the site public.
