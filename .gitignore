@@ -19,3 +19,5 @@ firebase-export-*
 
 # TypeScript build info
 *.tsbuildinfo
+.vercel
+.env*

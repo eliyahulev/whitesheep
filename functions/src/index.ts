@@ -1,7 +1,9 @@
 import { onCall, HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
+import * as functionsV1 from 'firebase-functions/v1';
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { resolveProvider, type SendResult } from './messaging';
 import { resolveInvoiceProvider, DOC_TYPE } from './morning';
@@ -11,6 +13,23 @@ import { markOverdueRentals } from './rentals';
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 initializeApp();
 const db = getFirestore();
+
+// Emails that get the `manager` role on first sign-in; everyone else is an `employee`.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'eliyahu.lev@gmail.com')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+/**
+ * On user creation (email/password or Google), assign the role custom claim:
+ * manager for allowlisted admin emails, employee otherwise. Enforced by rules + UI.
+ */
+export const assignRoleOnCreate = functionsV1.auth.user().onCreate(async (user) => {
+  const email = (user.email ?? '').toLowerCase();
+  const role = ADMIN_EMAILS.includes(email) ? 'manager' : 'employee';
+  await getAuth().setCustomUserClaims(user.uid, { role });
+  console.log(`[assignRoleOnCreate] ${email || user.uid} -> ${role}`);
+});
 
 // --- helpers ---
 function requireStaff(req: CallableRequest): { uid: string; name: string } {

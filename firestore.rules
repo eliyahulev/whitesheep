@@ -1,7 +1,10 @@
 rules_version = '2';
 
-// Baseline role-based security rules. Roles come from Firebase Auth custom claims.
-// Tightened further in Module 10. Rules mirror the UI guard: employee vs manager.
+// Role-based security rules, tightened to the role matrix (Module 10).
+// Roles come from Firebase Auth custom claims and mirror the UI guards.
+//   employee: create/update orders, weigh, log items, reserve & return inventory, send messages.
+//   manager:  all of the above + audit log, debtors, settings, invoicing, reports.
+// Server-side Cloud Functions use the Admin SDK and bypass these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -18,38 +21,53 @@ service cloud.firestore {
       return signedIn() && (role() == 'manager' || role() == 'employee');
     }
 
-    // Settings: everyone signed in reads config; only managers edit.
+    // Settings: staff read config; only managers edit.
     match /settings/{doc} {
       allow read: if isStaff();
       allow write: if isManager();
     }
 
-    // Audit log: any staff may append (via logAction); nobody edits/deletes.
-    // Only managers may read the full log (audit viewer is Module 7, manager-only).
+    // Audit log: staff append (via logAction); managers read; nobody edits/deletes.
     match /auditLog/{entry} {
       allow read: if isManager();
       allow create: if isStaff();
       allow update, delete: if false;
     }
 
-    // Operational data — customers, orders, order items, inventory, rentals:
-    // all staff may read/write (business logic refines this in later modules).
-    // Customers: staff read + create + update; only managers may delete.
+    // Customers: staff read/create/update; only managers delete.
     match /customers/{id} {
       allow read, create, update: if isStaff();
       allow delete: if isManager();
     }
-    match /orders/{id}      { allow read, write: if isStaff(); }
-    match /orderItems/{id}  { allow read, write: if isStaff(); }
-    // Sequential-number counters (e.g. counters/orders) — staff may read/increment.
-    match /counters/{id}    { allow read, write: if isStaff(); }
-    match /inventoryItems/{id} { allow read, write: if isStaff(); }
-    match /rentals/{id}     { allow read, write: if isStaff(); }
 
-    // Financial data — payments: staff read; managers write (refined in Module 4/5).
+    // Orders + items: staff create/update (core operational flow); only managers delete.
+    match /orders/{id} {
+      allow read, create, update: if isStaff();
+      allow delete: if isManager();
+    }
+    match /orderItems/{id} {
+      allow read, create, update: if isStaff();
+      allow delete: if isManager();
+    }
+
+    // Sequential-number counters (order numbering) — staff read/increment.
+    match /counters/{id} {
+      allow read, write: if isStaff();
+    }
+
+    // Inventory + rentals: staff read/write (employees reserve & return).
+    match /inventoryItems/{id} {
+      allow read, write: if isStaff();
+      allow delete: if isManager();
+    }
+    match /rentals/{id} {
+      allow read, create, update: if isStaff();
+      allow delete: if isManager();
+    }
+
+    // Financial data — payments: managers only (create is done server-side by functions).
     match /payments/{id} {
-      allow read: if isStaff();
-      allow write: if isManager();
+      allow read, write: if isManager();
     }
 
     // Deny everything else by default.

@@ -7,8 +7,10 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as fbSignOut,
   type User,
 } from 'firebase/auth';
@@ -26,6 +28,7 @@ interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -62,6 +65,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       async signIn(email, password) {
         await signInWithEmailAndPassword(auth, email, password);
+      },
+      async signInWithGoogle() {
+        const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+        // New users get their role claim from the assignRoleOnCreate function (async).
+        // Poll briefly for the claim so the first session already has the right role.
+        for (let i = 0; i < 8; i++) {
+          const token = await cred.user.getIdTokenResult(true);
+          if (token.claims.role) break;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        setUser(await toAuthUser(cred.user));
       },
       async signOut() {
         await fbSignOut(auth);

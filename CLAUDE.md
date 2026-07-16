@@ -92,7 +92,10 @@ Java is NOT an app/production dependency — only for local emulators. Productio
 - [x] Module 9 — Manager Dashboard ✓ live cards: open orders by status, overdue-return alert,
       debtors+total (manager-only), inventory availability. HomeScreen (/) rebuilt as dashboard.
       Employee sees operational cards only (no debtors). Verified.
-- [ ] Module 10 — Hardening & Deploy
+- [x] Module 10 — Hardening & Deploy ✓ full editable Settings (verified save+log), rules tightened to
+      role matrix (verified employee 403 on payments/settings-write/order-delete, 200 on order create),
+      external calls wrapped+logged, `vercel.json` (Vite SPA rewrite) + README deploy docs.
+      · Live deploy (Vercel + Firebase Blaze) is code-ready but needs the user's credentials to run.
 
 ## Project layout
 - `src/` — React app (Vite)

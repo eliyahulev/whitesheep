@@ -35,22 +35,54 @@ Open the app, then log in with a demo account:
 
 The Emulator UI is at http://127.0.0.1:4000.
 
-## Connecting to a real Firebase project
-1. Create a Firebase project; enable Firestore + Email/Password Auth.
-2. Copy `.env.example` → `.env` (or set Vercel env vars) and fill in the web app config.
-3. Set `VITE_USE_EMULATOR=false`.
-4. Deploy rules: `firebase deploy --only firestore:rules`.
-5. Set role custom claims on real users (adapt `scripts/seed.ts` to run against production, or use the Admin SDK / a Cloud Function — added in Module 10).
+## Deploy (production)
+
+The frontend deploys to **Vercel**; Firestore rules, Cloud Functions and scheduled jobs deploy to
+**Firebase**. Cloud Functions require the Firebase **Blaze** (pay-as-you-go) plan.
+
+### 1. Firebase project
+1. Create a Firebase project; enable **Firestore** and **Email/Password Auth**; upgrade to **Blaze**.
+2. Set `default` in `.firebaserc` to your project id.
+3. Deploy rules + functions (this also creates the Cloud Scheduler jobs for the scheduled functions):
+   ```bash
+   firebase deploy --only firestore:rules,functions
+   ```
+   Scheduled jobs: `debtEngine` and `rentalOverdueSweep` (every 6h) — visible under Cloud Scheduler.
+
+### 2. Functions environment (secrets — server-side only)
+Set in `functions/.env` (or as deployed env/secrets). Absent → the provider runs in **simulated** mode.
+| Var | Purpose |
+| --- | --- |
+| `MESSAGING_PROVIDER` | `twilio` (SMS/WhatsApp) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | Twilio credentials |
+| `MORNING_ENV` | `sandbox` or `production` |
+| `MORNING_API_ID` / `MORNING_API_SECRET` | Morning (Green Invoice) API key |
+
+### 3. Frontend on Vercel
+1. Import the repo in Vercel (framework **Vite** — `vercel.json` sets build + SPA rewrite).
+2. Set the project **Environment Variables** (from Firebase console → project settings → web app):
+   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
+   `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`,
+   and **`VITE_USE_EMULATOR=false`**.
+3. Deploy (`vercel --prod` or via Git integration).
+
+### 4. Roles (custom claims)
+Roles (`employee` / `manager`) are Firebase Auth **custom claims**, enforced in the UI and in
+Firestore rules. Set them on real users with the Admin SDK, e.g. adapt `scripts/seed.ts`
+(`auth.setCustomUserClaims(uid, { role: 'manager' })`) to run against production.
 
 ## Scripts
 - `npm run dev` — Vite dev server
 - `npm run build` — type-check + production build
 - `npm run lint` — TypeScript no-emit check
-- `npm run emulators` — Firebase Auth + Firestore emulators
-- `npm run seed` — seed demo users + settings into the emulators
+- `npm run emulators` — builds functions, then starts Auth + Firestore + **Functions** emulators
+- `npm run functions:build` — compile Cloud Functions (`functions/`)
+- `npm run seed` — seed demo users, settings, customers, orders, inventory & rentals into the emulators
 
 ## Environment variables
-See `.env.example`. All are the standard Firebase web config keys plus `VITE_USE_EMULATOR`.
+- **Frontend** (`.env.example`): the standard Firebase web config keys + `VITE_USE_EMULATOR`.
+- **Functions** (`functions/.env.example`): messaging (Twilio) + invoicing (Morning) credentials —
+  server-side only. Without them, those integrations run in simulated mode. See the Deploy section.
 
 ## Project structure
 ```
