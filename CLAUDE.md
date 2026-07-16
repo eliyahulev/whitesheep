@@ -126,25 +126,25 @@ Done:
 - App has **Google sign-in**; access is **invite-only** (Module 11): `assignRoleOnCreate` grants the
   role from a `users/{email}` invite, or `manager` to `ADMIN_EMAILS` (default `eliyahu.lev@gmail.com`)
   as bootstrap; everyone else gets role `'none'` and is denied. Manager manages users at `/users`.
+- **Blaze enabled** + **all Cloud Functions DEPLOYED** (2026-07-16) to `whitesheep-laundry` us-central1:
+  assignRoleOnCreate, sendSms, createOrderPaymentLink, settleOrderPayment, debtEngine+runDebtEngine,
+  rentalOverdueSweep+runRentalSweep, issueMonthlyInvoice, listUsers/inviteUser/setUserRole/removeUser.
+  Scheduled jobs created their Cloud Scheduler entries. `functions/.env` deployed with them → **Morning
+  runs in SANDBOX in prod** (temporary; sandbox docs are NOT valid tax invoices — switch to prod creds
+  + MORNING_ENV=production + a clearing terminal before real customers). Messaging = simulated (no Twilio).
 
 Still needed (blockers first):
-1. **Enable Blaze billing** on `whitesheep-laundry` — currently `billingEnabled: false`. Functions
-   can't deploy until this is done (link a billing account at console → usage/details → Modify plan).
-2. After Blaze → `firebase deploy --only functions` (deploys assignRoleOnCreate, sendSms,
-   createOrderPaymentLink, settleOrderPayment, debtEngine+runDebtEngine, rentalOverdueSweep+
-   runRentalSweep, issueMonthlyInvoice, and the Module 11 user-management callables
-   listUsers/inviteUser/setUserRole/removeUser; scheduled jobs create Cloud Scheduler entries).
-   ALSO redeploy rules (`firebase deploy --only firestore:rules`) for the new `users` collection.
-3. **Enable Google provider** + add the Vercel domain to Firebase **Authorized domains**
+1. **Enable Google provider** + add the Vercel domain to Firebase **Authorized domains**
    (Auth → Settings) so Google pop-ups work on the live site.
-4. First Google sign-in must happen **after** functions deploy so the role claim is set. The first
+2. First Google sign-in — functions are now deployed, so the role claim is set on sign-in. The first
    admin MUST be in `ADMIN_EMAILS` (bootstrap manager) or already invited — otherwise they get role
    `'none'` and are denied. If someone signed in before deploy (no/`none` claim), invite them from
    `/users` (or set the claim manually) so the next sign-in is authorized.
-5. Optional: add real **Twilio** (`TWILIO_*`) + **Morning** (`MORNING_*`) secrets to `functions/.env`
-   (else messaging/invoicing run in simulated mode). Admin allowlist override: `ADMIN_EMAILS`.
-6. Optional: disable Vercel **Deployment Protection** to make the site public.
-7. Production Firestore is **empty** — no demo seed; real data/users are created live.
+3. Morning: SANDBOX creds are live (temp). For real invoicing add **production** `MORNING_*` creds +
+   `MORNING_ENV=production` (ideally via Secret Manager) + a clearing terminal. Twilio (`TWILIO_*`)
+   still absent → messaging simulated. Admin allowlist override: `ADMIN_EMAILS`.
+4. Optional: disable Vercel **Deployment Protection** to make the site public.
+5. Production Firestore is **empty** — no demo seed; real data/users are created live.
 
 Deploy helpers: token for read-only API checks lives in `~/.config/configstore/firebase-tools.json`
 (`tokens.access_token`) — **reads only**; never use it for infra/auth-config writes (blocked by policy,
