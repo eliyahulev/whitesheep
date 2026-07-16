@@ -63,7 +63,7 @@ export function MonthlyInvoicingScreen() {
   return (
     <Stack spacing={2} className="fade-in">
       <Box>
-        <Typography variant="overline">מודול 8 · חיוב מוסדי</Typography>
+        <Typography variant="overline">חיוב מוסדי</Typography>
         <Typography variant="h1">חיוב חודשי</Typography>
         <Typography variant="body2" sx={{ mt: 0.5 }}>
           תעודות משלוח פתוחות מצטברות ללקוחות מוסדיים. בלחיצה אחת מפיקים חשבונית מרוכזת אחת.

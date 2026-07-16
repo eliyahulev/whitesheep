@@ -84,7 +84,7 @@ export function RentalCreateScreen() {
   return (
     <Stack spacing={2} className="fade-in" sx={{ maxWidth: 640 }}>
       <Box>
-        <Typography variant="overline">מודול 6 · השכרות</Typography>
+        <Typography variant="overline">השכרות</Typography>
         <Typography variant="h1">השכרה חדשה</Typography>
       </Box>
 

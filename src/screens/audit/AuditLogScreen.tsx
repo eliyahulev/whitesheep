@@ -65,7 +65,7 @@ export function AuditLogScreen() {
   return (
     <Stack spacing={2} className="fade-in">
       <Box>
-        <Typography variant="overline">מודול 7 · יומן ביקורת</Typography>
+        <Typography variant="overline">יומן ביקורת</Typography>
         <Typography variant="h1">יומן פעולות</Typography>
         <Typography variant="body2" sx={{ mt: 0.5 }}>
           מי עשה מה, ומתי. תצוגה בלבד.

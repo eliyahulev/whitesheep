@@ -42,7 +42,6 @@ export function OrdersListScreen() {
     <Stack spacing={2} className="fade-in">
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="overline">מודול 2 · הזמנות</Typography>
           <Typography variant="h1">הזמנות</Typography>
         </Box>
         <Button

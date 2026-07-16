@@ -113,7 +113,6 @@ export function InventoryScreen() {
   return (
     <Stack spacing={2} className="fade-in">
       <Box>
-        <Typography variant="overline">מודול 6 · השכרות ומלאי</Typography>
         <Typography variant="h1">השכרות ומלאי</Typography>
       </Box>
 

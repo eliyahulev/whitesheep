@@ -169,7 +169,7 @@ export function OrderDetailScreen() {
                 : 'התשלום התקבל · הפקת החשבונית נכשלה',
               severity: res.invoiceId ? 'success' : 'error',
             }
-          : { msg: 'התשלום התקבל · לקוח מוסדי (חשבונית חודשית — מודול 8)', severity: 'success' },
+          : { msg: 'התשלום התקבל · לקוח מוסדי (חשבונית חודשית מרוכזת)', severity: 'success' },
       );
     } catch (e) {
       setSnack({ msg: `סימון התשלום נכשל: ${(e as Error).message}`, severity: 'error' });
@@ -192,7 +192,7 @@ export function OrderDetailScreen() {
 
       {justCreated && (
         <Alert severity="success" icon={<Icon name="check_circle" size={20} />}>
-          ההזמנה נוצרה. נשלחה ללקוח הודעת קבלה (הודעת סטאב — ספק אמיתי במודול 3).
+          ההזמנה נוצרה. נשלחה ללקוח הודעת קבלה.
         </Alert>
       )}
 

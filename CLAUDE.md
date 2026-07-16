@@ -97,6 +97,36 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       external calls wrapped+logged, `vercel.json` (Vite SPA rewrite) + README deploy docs.
       · Live deploy (Vercel + Firebase Blaze) is code-ready but needs the user's credentials to run.
 
+## Live deployment — status & what's still needed
+Live project: **Firebase `whitesheep-laundry`** (region me-west1) · **Vercel project `whitesheep`**
+(scope `elis-projects-2aa6e149`). Web config is public (no secrets); it's set as Vercel env vars.
+
+Done:
+- Firebase project + Firestore DB created; **security rules deployed**; Firestore + Identity Toolkit APIs enabled.
+- Web app created; `VITE_FIREBASE_*` + `VITE_USE_EMULATOR=false` set in Vercel (production).
+- **Frontend deployed** to Vercel prod (behind Vercel Deployment Protection → returns 302 until disabled).
+- App has **Google sign-in**; `assignRoleOnCreate` fn assigns `manager` to `ADMIN_EMAILS`
+  (default `eliyahu.lev@gmail.com`), else `employee`.
+
+Still needed (blockers first):
+1. **Enable Blaze billing** on `whitesheep-laundry` — currently `billingEnabled: false`. Functions
+   can't deploy until this is done (link a billing account at console → usage/details → Modify plan).
+2. After Blaze → `firebase deploy --only functions` (deploys assignRoleOnCreate, sendSms,
+   createOrderPaymentLink, settleOrderPayment, debtEngine+runDebtEngine, rentalOverdueSweep+
+   runRentalSweep, issueMonthlyInvoice; scheduled jobs create Cloud Scheduler entries).
+3. **Enable Google provider** + add the Vercel domain to Firebase **Authorized domains**
+   (Auth → Settings) so Google pop-ups work on the live site.
+4. First Google sign-in must happen **after** functions deploy so the role claim is set
+   (sign in earlier → user created without claim → set it manually).
+5. Optional: add real **Twilio** (`TWILIO_*`) + **Morning** (`MORNING_*`) secrets to `functions/.env`
+   (else messaging/invoicing run in simulated mode). Admin allowlist override: `ADMIN_EMAILS`.
+6. Optional: disable Vercel **Deployment Protection** to make the site public.
+7. Production Firestore is **empty** — no demo seed; real data/users are created live.
+
+Deploy helpers: token for read-only API checks lives in `~/.config/configstore/firebase-tools.json`
+(`tokens.access_token`) — **reads only**; never use it for infra/auth-config writes (blocked by policy,
+use the Firebase CLI / console).
+
 ## Project layout
 - `src/` — React app (Vite)
 - `src/firebase/` — Firebase init + emulator wiring

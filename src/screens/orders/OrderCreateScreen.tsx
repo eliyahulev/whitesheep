@@ -89,7 +89,7 @@ export function OrderCreateScreen() {
   return (
     <Stack spacing={2} className="fade-in" sx={{ maxWidth: 640 }}>
       <Box>
-        <Typography variant="overline">מודול 2 · הזמנות</Typography>
+        <Typography variant="overline">הזמנות</Typography>
         <Typography variant="h1">הזמנה חדשה</Typography>
       </Box>
 

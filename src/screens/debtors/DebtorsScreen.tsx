@@ -89,7 +89,7 @@ export function DebtorsScreen() {
     <Stack spacing={2} className="fade-in">
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="overline">מודול 5 · חובות</Typography>
+          <Typography variant="overline">חובות</Typography>
           <Typography variant="h1">חייבים</Typography>
         </Box>
         <Button

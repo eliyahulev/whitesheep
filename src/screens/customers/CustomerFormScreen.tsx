@@ -118,7 +118,7 @@ export function CustomerFormScreen() {
   return (
     <Stack spacing={2} className="fade-in" sx={{ maxWidth: 640 }}>
       <Box>
-        <Typography variant="overline">מודול 1 · לקוחות</Typography>
+        <Typography variant="overline">לקוחות</Typography>
         <Typography variant="h1">{isEdit ? 'עריכת לקוח' : 'לקוח חדש'}</Typography>
       </Box>
 
@@ -206,7 +206,7 @@ export function CustomerFormScreen() {
                       label="חשבונית חודשית מרוכזת"
                     />
                     <Alert severity="info" icon={<Icon name="info" size={20} />}>
-                      תעודות משלוח יצטברו ללקוח לאורך החודש, ובסופו תופק חשבונית אחת מרוכזת (מודול 8).
+                      תעודות משלוח יצטברו ללקוח לאורך החודש, ובסופו תופק חשבונית אחת מרוכזת.
                     </Alert>
                   </>
                 )}

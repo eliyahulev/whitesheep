@@ -81,7 +81,6 @@ export function SettingsScreen() {
   return (
     <Stack spacing={2} className="fade-in" sx={{ maxWidth: 720 }}>
       <Box>
-        <Typography variant="overline">מודול 10 · הגדרות</Typography>
         <Typography variant="h1">הגדרות</Typography>
         <Typography variant="body2" sx={{ mt: 0.5 }}>
           מחירים, תוקף קישורי תשלום, תזכורות ותבניות הודעה — הכל נטען מכאן, שום דבר לא מקודד קשיח.

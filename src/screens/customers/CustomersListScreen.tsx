@@ -34,7 +34,6 @@ export function CustomersListScreen() {
     <Stack spacing={2} className="fade-in">
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="overline">מודול 1 · לקוחות</Typography>
           <Typography variant="h1">לקוחות</Typography>
         </Box>
         <Button
