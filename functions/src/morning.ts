@@ -55,6 +55,13 @@ export const DOC_TYPE = {
   TAX_INVOICE_RECEIPT: 320, // חשבונית מס קבלה
 } as const;
 
+// Income-line VAT handling. Our prices (finalCost / delivery-note amounts) are the
+// amount the customer actually pays — i.e. VAT-INCLUSIVE, matching the payment link's
+// charge. vatType 1 tells Morning the line price already includes VAT (it back-calculates
+// the VAT component), so the document total equals what was paid. vatType 0 would ADD VAT
+// on top, making the receipt total exceed the payment → error 2014/2422 (receipts≠payments).
+const VAT_TYPE_INCLUDED = 1;
+
 interface MorningConfig {
   id: string;
   secret: string;
@@ -107,7 +114,7 @@ function morningProvider(cfg: MorningConfig): InvoiceProvider {
             type: DOC_TYPE.TAX_INVOICE_RECEIPT, // document auto-issued by Morning on payment
             lang: 'he',
             currency: 'ILS',
-            price: p.amount,
+            amount: p.amount, // payment-form charge total (VAT-inclusive); field is `amount`, not `price`
             client: { name: p.client.name, emails: p.client.emails, taxId: p.client.taxId, add: true },
             successUrl: p.successUrl,
             failureUrl: p.failureUrl,
@@ -132,12 +139,17 @@ function morningProvider(cfg: MorningConfig): InvoiceProvider {
             date: today(),
             lang: 'he',
             currency: 'ILS',
-            vatType: 0,
             rounding: false,
             signature: true,
             client: { name: p.client.name, emails: p.client.emails, taxId: p.client.taxId, add: true },
             income: [
-              { description: p.description, quantity: 1, price: p.amount, currency: 'ILS', vatType: 0 },
+              {
+                description: p.description,
+                quantity: 1,
+                price: p.amount,
+                currency: 'ILS',
+                vatType: VAT_TYPE_INCLUDED,
+              },
             ],
             payment: [{ type: 4 /* credit card */, price: p.amount, date: today() }],
             remarks: 'הופק אוטומטית עם קבלת התשלום',
@@ -167,7 +179,6 @@ function morningProvider(cfg: MorningConfig): InvoiceProvider {
             date: today(),
             lang: 'he',
             currency: 'ILS',
-            vatType: 0,
             rounding: false,
             signature: true,
             client: { name: p.client.name, emails: p.client.emails, taxId: p.client.taxId, add: true },
@@ -176,7 +187,7 @@ function morningProvider(cfg: MorningConfig): InvoiceProvider {
               quantity: 1,
               price: l.amount,
               currency: 'ILS',
-              vatType: 0,
+              vatType: VAT_TYPE_INCLUDED,
             })),
             remarks: 'חשבונית חודשית מרוכזת',
           }),

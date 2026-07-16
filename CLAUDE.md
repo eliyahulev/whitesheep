@@ -72,6 +72,12 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       · `functions/src/morning.ts` (Green Invoice API + simulate fallback), callables
         `createOrderPaymentLink` + `settleOrderPayment`; client `paymentsService.ts`; order-detail תשלום card
       · Morning env (functions): MORNING_ENV / MORNING_API_ID / MORNING_API_SECRET (absent → simulated)
+      · SANDBOX credentials configured + verified live (token, issueDocument 320, issueConsolidated 305 all OK).
+        Two morning.ts fixes from live testing: (1) income `vatType: 1` (price INCLUDES VAT — our finalCost is
+        the VAT-inclusive amount the customer pays; `vatType: 0` added VAT on top → error 2422 receipts≠payments);
+        (2) payment-form amount field is `amount`, not `price`. Payment LINK also needs a clearing terminal
+        connected in the Morning account (else error 2600 "no active terminal") — account setup, not code.
+        Prod: use production creds + MORNING_ENV=production + Secret Manager for MORNING_API_SECRET on deploy.
 - [x] Module 5 — Debt Engine ✓ expiry→debt + interval reminders (scheduled + on-demand), debtors
       screen (close cash/transfer→paid_manually, manual reminder), all logged. Verified end-to-end.
       · `functions/src/debt.ts` (markExpiredDebts + sendDueReminders), `debtEngine` (onSchedule 6h) +
