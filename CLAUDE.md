@@ -81,7 +81,9 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       sweep + alert (Home + screen banner), one-click reminder, all logged. Verified end-to-end.
       · `inventoryService.ts`, `rentalsService.ts`, `functions/src/rentals.ts` (markOverdueRentals),
         `rentalOverdueSweep`(sched)+`runRentalSweep`(callable), `src/screens/inventory/*`, nav "השכרות ומלאי"
-- [ ] Module 7 — Audit Log Viewer
+- [x] Module 7 — Audit Log Viewer ✓ manager-only searchable log; filters (date range/user/action type)
+      work; employee blocked (UI redirect + nav hidden + rules 403); read-only. Verified.
+      · `auditService.ts`, `src/screens/audit/AuditLogScreen.tsx` (replaced placeholder)
 - [ ] Module 8 — Institutional Monthly Invoicing
 - [ ] Module 9 — Manager Dashboard
 - [ ] Module 10 — Hardening & Deploy

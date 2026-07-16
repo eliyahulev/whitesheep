@@ -5,7 +5,7 @@ import { AppShell } from '@/ui/AppShell';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
-import { AuditPlaceholderScreen } from '@/screens/AuditPlaceholderScreen';
+import { AuditLogScreen } from '@/screens/audit/AuditLogScreen';
 import { CustomersListScreen } from '@/screens/customers/CustomersListScreen';
 import { CustomerFormScreen } from '@/screens/customers/CustomerFormScreen';
 import { CustomerDetailScreen } from '@/screens/customers/CustomerDetailScreen';
@@ -59,7 +59,7 @@ export default function App() {
               path="/audit"
               element={
                 <RequireAuth role="manager">
-                  <AuditPlaceholderScreen />
+                  <AuditLogScreen />
                 </RequireAuth>
               }
             />
