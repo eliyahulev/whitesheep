@@ -84,7 +84,11 @@ Java is NOT an app/production dependency — only for local emulators. Productio
 - [x] Module 7 — Audit Log Viewer ✓ manager-only searchable log; filters (date range/user/action type)
       work; employee blocked (UI redirect + nav hidden + rules 403); read-only. Verified.
       · `auditService.ts`, `src/screens/audit/AuditLogScreen.tsx` (replaced placeholder)
-- [ ] Module 8 — Institutional Monthly Invoicing
+- [x] Module 8 — Institutional Monthly Invoicing ✓ open delivery notes (priced, un-consolidated
+      institutional orders) → one-click consolidated invoice (Morning type 305, multi-line) + send,
+      notes marked invoiced. Verified. Private M4 flow untouched.
+      · morning.ts issueConsolidated, `issueMonthlyInvoice` callable, `monthlyInvoicingService.ts`,
+        `src/screens/invoicing/MonthlyInvoicingScreen.tsx`, nav "חיוב חודשי"
 - [ ] Module 9 — Manager Dashboard
 - [ ] Module 10 — Hardening & Deploy
 

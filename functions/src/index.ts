@@ -267,3 +267,107 @@ export const runRentalSweep = onCall(async (req) => {
   const flagged = await markOverdueRentals(db);
   return { flagged };
 });
+
+// ============================================================
+// Module 8 — institutional monthly consolidated invoicing
+// ============================================================
+
+interface DeliveryNote {
+  orderNumber: number;
+  finalCost: number | null;
+  paid?: boolean;
+  consolidatedInvoiceId?: string | null;
+  createdAt?: Timestamp;
+}
+
+/**
+ * Collect a customer's open delivery notes (priced institutional orders not yet consolidated
+ * or paid), issue ONE monthly consolidated invoice (Morning), mark the notes invoiced, send it.
+ * Manager-only. Does not affect the private per-payment flow (Module 4).
+ */
+export const issueMonthlyInvoice = onCall<{ customerId: string }>(async (req) => {
+  const actor = requireStaff(req);
+  if (req.auth?.token.role !== 'manager') {
+    throw new HttpsError('permission-denied', 'רק מנהל יכול להפיק חשבונית חודשית.');
+  }
+  const { customerId } = req.data ?? {};
+  if (!customerId) throw new HttpsError('invalid-argument', 'חסר מזהה לקוח.');
+
+  const custSnap = await db.doc(`customers/${customerId}`).get();
+  const customer = custSnap.data() as
+    | { name?: string; email?: string; phone?: string; type?: string; billing?: { taxId?: string } }
+    | undefined;
+  if (!custSnap.exists || !customer) throw new HttpsError('not-found', 'הלקוח לא נמצא.');
+  if (customer.type !== 'institutional') {
+    throw new HttpsError('failed-precondition', 'חשבונית חודשית מיועדת ללקוחות מוסדיים בלבד.');
+  }
+
+  const ordersSnap = await db.collection('orders').where('customerId', '==', customerId).get();
+  const notes = ordersSnap.docs.filter((d) => {
+    const o = d.data() as DeliveryNote;
+    return o.finalCost != null && !o.consolidatedInvoiceId && o.paid !== true;
+  });
+  if (notes.length === 0) {
+    throw new HttpsError('failed-precondition', 'אין תעודות משלוח פתוחות ללקוח זה.');
+  }
+
+  const total = notes.reduce((s, d) => s + ((d.data() as DeliveryNote).finalCost ?? 0), 0);
+  const provider = resolveInvoiceProvider();
+  const docRes = await provider.issueConsolidated({
+    type: DOC_TYPE.TAX_INVOICE,
+    client: {
+      name: customer.name ?? '',
+      emails: customer.email ? [customer.email] : [],
+      taxId: customer.billing?.taxId,
+    },
+    lines: notes.map((d) => {
+      const o = d.data() as DeliveryNote;
+      return { description: `תעודת משלוח — הזמנה #${o.orderNumber}`, amount: o.finalCost ?? 0 };
+    }),
+  });
+  if (!docRes.ok) {
+    throw new HttpsError('internal', `הפקת החשבונית נכשלה: ${docRes.error ?? ''}`);
+  }
+
+  // mark each delivery note as invoiced
+  const batch = db.batch();
+  for (const d of notes) {
+    batch.update(d.ref, {
+      consolidatedInvoiceId: docRes.id ?? null,
+      consolidatedAt: FieldValue.serverTimestamp(),
+      paid: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
+
+  // send it to the customer (Morning also emails it)
+  const settings = ((await db.doc('settings/global').get()).data() ?? {}) as {
+    templates?: { monthlyInvoiceIssued?: string };
+  };
+  const tpl =
+    settings.templates?.monthlyInvoiceIssued ??
+    'היי [שם הלקוח], הופקה חשבונית חודשית מרוכזת על סך [סכום] ש"ח עבור [מספר] תעודות משלוח. למסמך: [קישור למסמך].';
+  const body = fillTemplate(tpl, {
+    '[שם הלקוח]': customer.name ?? '',
+    '[סכום]': String(total),
+    '[מספר]': String(notes.length),
+    '[קישור למסמך]': docRes.url ?? '',
+  });
+  if (customer.phone) await resolveProvider().send(customer.phone, body);
+
+  await serverLog(
+    actor,
+    'financial',
+    `חשבונית חודשית מרוכזת ל${customer.name}: ${notes.length} תעודות משלוח, סה"כ ${total} ש"ח` +
+      (docRes.simulated ? ' (סימולציה)' : ''),
+  );
+
+  return {
+    invoiceId: docRes.id,
+    invoiceUrl: docRes.url,
+    count: notes.length,
+    total,
+    simulated: docRes.simulated ?? false,
+  };
+});

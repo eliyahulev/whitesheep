@@ -24,6 +24,8 @@ export const DEFAULT_SETTINGS: Settings = {
       'היי [שם], תזכורת קטנה לגבי המפות שהשאלת, הן היו אמורות לחזור בתאריך [תאריך]. נשמח לעדכון!',
     invoiceIssued:
       'היי [שם הלקוח], קיבלנו את תשלומך על סך [סכום] ש"ח. חשבונית מס קבלה: [קישור למסמך]. תודה שבחרת בנו!',
+    monthlyInvoiceIssued:
+      'היי [שם הלקוח], הופקה חשבונית חודשית מרוכזת על סך [סכום] ש"ח עבור [מספר] תעודות משלוח. למסמך: [קישור למסמך].',
   },
   integrations: {
     // 'twilio' routes sends through the sendSms Cloud Function (credentials server-side).

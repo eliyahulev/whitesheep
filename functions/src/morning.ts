@@ -25,18 +25,33 @@ export interface DocumentParams {
   client: InvoiceClient;
 }
 
+export interface ConsolidatedParams {
+  type: number;
+  client: InvoiceClient;
+  lines: { description: string; amount: number }[]; // one row per delivery note
+}
+
+export interface InvoiceResult {
+  ok: boolean;
+  id?: string;
+  url?: string;
+  error?: string;
+  simulated?: boolean;
+}
+
 export interface InvoiceProvider {
   readonly name: string;
   createPaymentForm(
     p: PaymentFormParams,
   ): Promise<{ ok: boolean; url?: string; error?: string; simulated?: boolean }>;
-  issueDocument(
-    p: DocumentParams,
-  ): Promise<{ ok: boolean; id?: string; url?: string; error?: string; simulated?: boolean }>;
+  issueDocument(p: DocumentParams): Promise<InvoiceResult>;
+  /** Multi-line document (e.g. a monthly consolidated invoice). */
+  issueConsolidated(p: ConsolidatedParams): Promise<InvoiceResult>;
 }
 
 /** Morning document type codes. */
 export const DOC_TYPE = {
+  TAX_INVOICE: 305, // חשבונית מס (used for monthly consolidated billing)
   TAX_INVOICE_RECEIPT: 320, // חשבונית מס קבלה
 } as const;
 
@@ -141,6 +156,44 @@ function morningProvider(cfg: MorningConfig): InvoiceProvider {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
+    async issueConsolidated(p) {
+      try {
+        const token = await getToken(cfg);
+        const res = await fetch(`${cfg.base}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            type: p.type,
+            date: today(),
+            lang: 'he',
+            currency: 'ILS',
+            vatType: 0,
+            rounding: false,
+            signature: true,
+            client: { name: p.client.name, emails: p.client.emails, taxId: p.client.taxId, add: true },
+            income: p.lines.map((l) => ({
+              description: l.description,
+              quantity: 1,
+              price: l.amount,
+              currency: 'ILS',
+              vatType: 0,
+            })),
+            remarks: 'חשבונית חודשית מרוכזת',
+          }),
+        });
+        const data = (await res.json()) as {
+          id?: string;
+          url?: { origin?: string; he?: string } | string;
+          errorMessage?: string;
+        };
+        if (!res.ok) return { ok: false, error: data?.errorMessage ?? `HTTP ${res.status}` };
+        const url =
+          typeof data.url === 'string' ? data.url : data.url?.he ?? data.url?.origin ?? undefined;
+        return { ok: true, id: data.id, url };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
   };
 }
 
@@ -154,6 +207,14 @@ const simulatedInvoiceProvider: InvoiceProvider = {
   async issueDocument(p) {
     const id = `sim-doc-${Date.now()}`;
     console.log('[invoice:simulated] issue document type', p.type, 'amount', p.amount, '→', id);
+    return { ok: true, id, url: `https://docs.sandbox.example/${id}.pdf`, simulated: true };
+  },
+  async issueConsolidated(p) {
+    const id = `sim-monthly-${Date.now()}`;
+    const total = p.lines.reduce((s, l) => s + l.amount, 0);
+    console.log(
+      `[invoice:simulated] consolidated type ${p.type} · ${p.lines.length} lines · total ${total} → ${id}`,
+    );
     return { ok: true, id, url: `https://docs.sandbox.example/${id}.pdf`, simulated: true };
   },
 };

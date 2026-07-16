@@ -144,11 +144,19 @@ export function CustomerDetailScreen() {
       {institutional && (
         <Card>
           <CardContent>
-            <Stack spacing={1}>
+            <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
               <Typography variant="h3">תעודות משלוח</Typography>
               <Typography variant="body2">
-                תעודות המשלוח של לקוח זה יצטברו כאן לאורך החודש לצורך חשבונית מרוכזת (מודול 8).
+                הזמנות מתומחרות של לקוח זה מצטברות כתעודות משלוח לחיוב חודשי מרוכז.
               </Typography>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<Icon name="request_quote" size={20} />}
+                onClick={() => navigate('/monthly-invoicing')}
+              >
+                למסך החיוב החודשי
+              </Button>
             </Stack>
           </CardContent>
         </Card>

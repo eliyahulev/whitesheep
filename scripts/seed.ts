@@ -38,6 +38,8 @@ const DEFAULT_SETTINGS = {
       'היי [שם], תזכורת קטנה לגבי המפות שהשאלת, הן היו אמורות לחזור בתאריך [תאריך]. נשמח לעדכון!',
     invoiceIssued:
       'היי [שם הלקוח], קיבלנו את תשלומך על סך [סכום] ש"ח. חשבונית מס קבלה: [קישור למסמך]. תודה שבחרת בנו!',
+    monthlyInvoiceIssued:
+      'היי [שם הלקוח], הופקה חשבונית חודשית מרוכזת על סך [סכום] ש"ח עבור [מספר] תעודות משלוח. למסמך: [קישור למסמך].',
   },
   integrations: { smsProvider: 'twilio', invoiceProvider: 'stub' },
 };
@@ -207,8 +209,37 @@ async function main() {
       debtReminders: 0,
     },
   });
-  await db.collection('counters').doc('orders').set({ next: 1004 });
-  console.log('✓ 4 demo orders (+ order counter)');
+  // #1005/#1006 — institutional delivery notes for מלון הגליל (open, un-consolidated)
+  await addOrder({
+    orderNumber: 1005,
+    customerName: 'מלון הגליל',
+    status: 'delivered',
+    hasPickupDelivery: true,
+    finalCost: 30 * P.iron, // 240
+    items: [{ service: 'ironing', quantity: 30, description: 'מפות', unitPrice: P.iron, lineTotal: 240 }],
+    extra: { paid: false },
+  });
+  await addOrder({
+    orderNumber: 1006,
+    customerName: 'מלון הגליל',
+    status: 'delivered',
+    hasPickupDelivery: true,
+    finalCost: 4 * P.dry, // 100
+    items: [{ service: 'dry_cleaning', quantity: 4, description: 'וילונות', unitPrice: P.dry, lineTotal: 100 }],
+    extra: { paid: false },
+  });
+  // #1007 — institutional delivery note for גן אירועים להב
+  await addOrder({
+    orderNumber: 1007,
+    customerName: 'גן אירועים להב',
+    status: 'delivered',
+    hasPickupDelivery: true,
+    finalCost: 15 * P.dry, // 375
+    items: [{ service: 'dry_cleaning', quantity: 15, description: 'מפות', unitPrice: P.dry, lineTotal: 375 }],
+    extra: { paid: false },
+  });
+  await db.collection('counters').doc('orders').set({ next: 1007 });
+  console.log('✓ 7 demo orders (+ order counter)');
 
   // 3c. Inventory items + rentals (one active, one overdue)
   const inv = [

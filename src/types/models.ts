@@ -58,6 +58,10 @@ export interface Order {
   debtSince?: TS; // when it became overdue (= expiry time)
   debtReminders?: number; // scheduled reminders sent so far
   lastReminderAt?: TS;
+  // Institutional monthly consolidation (Module 8) — a priced institutional order is an open
+  // "delivery note" until it's rolled into a monthly invoice.
+  consolidatedInvoiceId?: string | null;
+  consolidatedAt?: TS;
   createdAt: TS;
   updatedAt: TS;
 }
@@ -129,6 +133,7 @@ export interface MessageTemplates {
   debtReminder: string;
   rentalOverdueReminder: string;
   invoiceIssued: string;
+  monthlyInvoiceIssued: string;
 }
 
 export interface Settings {
