@@ -53,6 +53,11 @@ export interface Order {
   paidAt?: TS;
   invoiceId?: string | null; // Morning document id (private customers)
   invoiceUrl?: string | null; // link to the issued חשבונית מס קבלה PDF
+  // Debt engine (Module 5)
+  isDebt?: boolean; // payment link expired unpaid → open debt
+  debtSince?: TS; // when it became overdue (= expiry time)
+  debtReminders?: number; // scheduled reminders sent so far
+  lastReminderAt?: TS;
   createdAt: TS;
   updatedAt: TS;
 }
@@ -81,7 +86,8 @@ export interface InventoryItem {
 export interface Rental {
   id: string;
   customerId: string;
-  lines: { inventoryItemId: string; quantity: number }[];
+  customerName: string; // denormalized for display
+  lines: { inventoryItemId: string; itemName: string; quantity: number }[];
   rentedAt: TS;
   expectedReturnAt: TS;
   returnedAt?: TS | null;

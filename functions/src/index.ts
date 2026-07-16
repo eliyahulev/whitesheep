@@ -1,9 +1,12 @@
 import { onCall, HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { resolveProvider, type SendResult } from './messaging';
 import { resolveInvoiceProvider, DOC_TYPE } from './morning';
+import { markExpiredDebts, sendDueReminders } from './debt';
+import { markOverdueRentals } from './rentals';
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 initializeApp();
@@ -220,4 +223,47 @@ export const settleOrderPayment = onCall<{ orderId: string }>(async (req) => {
   );
 
   return { paid: true, isPrivate, invoiceId, invoiceUrl, simulated: invoiceSimulated };
+});
+
+// ============================================================
+// Module 5 — debt engine (scheduled + on-demand)
+// ============================================================
+
+/** Scheduled sweep: expire unpaid links into debts, then send due reminders. */
+export const debtEngine = onSchedule('every 6 hours', async () => {
+  const marked = await markExpiredDebts(db);
+  const reminded = await sendDueReminders(db);
+  console.log(`[debtEngine] marked=${marked} reminded=${reminded}`);
+});
+
+/** Manager-only manual trigger (debtors screen "check now"). Runs both sweeps once. */
+export const runDebtEngine = onCall(async (req) => {
+  const actor = requireStaff(req);
+  if (req.auth?.token.role !== 'manager') {
+    throw new HttpsError('permission-denied', 'רק מנהל יכול להריץ את מנוע החובות.');
+  }
+  const marked = await markExpiredDebts(db);
+  const reminded = await sendDueReminders(db);
+  if (marked || reminded) {
+    await serverLog(
+      actor,
+      'financial',
+      `הרצת מנוע חובות: ${marked} חובות חדשים, ${reminded} תזכורות נשלחו`,
+    );
+  }
+  return { marked, reminded };
+});
+
+// ============================================================
+// Module 6 — rental overdue sweep (scheduled + on-demand)
+// ============================================================
+export const rentalOverdueSweep = onSchedule('every 6 hours', async () => {
+  const flagged = await markOverdueRentals(db);
+  console.log(`[rentalOverdueSweep] flagged=${flagged}`);
+});
+
+export const runRentalSweep = onCall(async (req) => {
+  requireStaff(req);
+  const flagged = await markOverdueRentals(db);
+  return { flagged };
 });

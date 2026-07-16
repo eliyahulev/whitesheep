@@ -12,6 +12,9 @@ import { CustomerDetailScreen } from '@/screens/customers/CustomerDetailScreen';
 import { OrdersListScreen } from '@/screens/orders/OrdersListScreen';
 import { OrderCreateScreen } from '@/screens/orders/OrderCreateScreen';
 import { OrderDetailScreen } from '@/screens/orders/OrderDetailScreen';
+import { DebtorsScreen } from '@/screens/debtors/DebtorsScreen';
+import { InventoryScreen } from '@/screens/inventory/InventoryScreen';
+import { RentalCreateScreen } from '@/screens/inventory/RentalCreateScreen';
 
 export default function App() {
   return (
@@ -34,6 +37,16 @@ export default function App() {
             <Route path="/orders" element={<OrdersListScreen />} />
             <Route path="/orders/new" element={<OrderCreateScreen />} />
             <Route path="/orders/:id" element={<OrderDetailScreen />} />
+            <Route path="/inventory" element={<InventoryScreen />} />
+            <Route path="/rentals/new" element={<RentalCreateScreen />} />
+            <Route
+              path="/debtors"
+              element={
+                <RequireAuth role="manager">
+                  <DebtorsScreen />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/settings"
               element={

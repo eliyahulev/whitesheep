@@ -30,6 +30,8 @@ const NAV: NavEntry[] = [
   { to: '/', label: 'בית', icon: 'home' },
   { to: '/orders', label: 'הזמנות', icon: 'receipt_long' },
   { to: '/customers', label: 'לקוחות', icon: 'group' },
+  { to: '/inventory', label: 'השכרות ומלאי', icon: 'inventory_2' },
+  { to: '/debtors', label: 'חייבים', icon: 'account_balance_wallet', role: 'manager' },
   { to: '/settings', label: 'הגדרות', icon: 'settings', role: 'manager' },
   { to: '/audit', label: 'יומן פעולות', icon: 'history', role: 'manager' },
 ];

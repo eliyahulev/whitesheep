@@ -13,7 +13,7 @@
  */
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || 'whitesheep-demo';
 
@@ -137,6 +137,7 @@ async function main() {
     hasPickupDelivery: boolean;
     finalCost: number | null;
     items: Record<string, unknown>[];
+    extra?: Record<string, unknown>;
   }) {
     const ref = await db.collection('orders').add({
       orderNumber: o.orderNumber,
@@ -147,9 +148,12 @@ async function main() {
       finalCost: o.finalCost,
       createdAt: now,
       updatedAt: now,
+      ...(o.extra ?? {}),
     });
     for (const it of o.items) await db.collection('orderItems').add({ orderId: ref.id, ...it });
   }
+  const DAY = 86_400_000;
+  const daysAgo = (n: number) => Timestamp.fromMillis(Date.now() - n * DAY);
   // #1001 — weighed laundry, not yet weighed → no final cost
   await addOrder({
     orderNumber: 1001,
@@ -171,8 +175,87 @@ async function main() {
       { service: 'dry_cleaning', quantity: 3, description: 'חליפות', unitPrice: P.dry, lineTotal: 3 * P.dry },
     ],
   });
-  await db.collection('counters').doc('orders').set({ next: 1002 });
-  console.log('✓ 2 demo orders (+ order counter)');
+  // #1003 — DEBT CANDIDATE: unpaid, payment link expired 2 days ago (not yet a debt).
+  // The debt engine should mark this as an open debt.
+  await addOrder({
+    orderNumber: 1003,
+    customerName: 'משפחת כהן',
+    status: 'ready',
+    hasPickupDelivery: false,
+    finalCost: 25 * P.iron, // 200
+    items: [{ service: 'ironing', quantity: 25, description: 'מפות', unitPrice: P.iron, lineTotal: 200 }],
+    extra: {
+      paid: false,
+      paymentLink: 'https://pay.sandbox.example/form/1003',
+      paymentLinkExpiresAt: daysAgo(2),
+    },
+  });
+  // #1004 — OPEN DEBT, overdue 5 days → a scheduled reminder is due (interval[0]=3).
+  await addOrder({
+    orderNumber: 1004,
+    customerName: 'דנה לוי',
+    status: 'ready',
+    hasPickupDelivery: false,
+    finalCost: 40 * P.iron, // 320
+    items: [{ service: 'ironing', quantity: 40, description: 'מפיות', unitPrice: P.iron, lineTotal: 320 }],
+    extra: {
+      paid: false,
+      paymentLink: 'https://pay.sandbox.example/form/1004',
+      paymentLinkExpiresAt: daysAgo(6),
+      isDebt: true,
+      debtSince: daysAgo(5),
+      debtReminders: 0,
+    },
+  });
+  await db.collection('counters').doc('orders').set({ next: 1004 });
+  console.log('✓ 4 demo orders (+ order counter)');
+
+  // 3c. Inventory items + rentals (one active, one overdue)
+  const inv = [
+    { name: 'מפות שולחן', total: 55, rented: 20 },
+    { name: 'מפיות בד', total: 140, rented: 40 },
+    { name: 'מצעים', total: 60, rented: 10 },
+  ];
+  const invId: Record<string, string> = {};
+  for (const it of inv) {
+    const ref = await db.collection('inventoryItems').add({
+      name: it.name,
+      totalQuantity: it.total,
+      availableQuantity: it.total - it.rented,
+      createdAt: now,
+      updatedAt: now,
+    });
+    invId[it.name] = ref.id;
+  }
+  const daysFromNow = (n: number) => Timestamp.fromMillis(Date.now() + n * DAY);
+  // active rental (returns in 5 days)
+  await db.collection('rentals').add({
+    customerId: idByName['מלון הגליל'],
+    customerName: 'מלון הגליל',
+    lines: [{ inventoryItemId: invId['מפות שולחן'], itemName: 'מפות שולחן', quantity: 20 }],
+    rentedAt: daysAgo(2),
+    expectedReturnAt: daysFromNow(5),
+    returnedAt: null,
+    overdueAlerted: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+  // OVERDUE rental (was due 3 days ago, not returned)
+  await db.collection('rentals').add({
+    customerId: idByName['גן אירועים להב'],
+    customerName: 'גן אירועים להב',
+    lines: [
+      { inventoryItemId: invId['מפיות בד'], itemName: 'מפיות בד', quantity: 40 },
+      { inventoryItemId: invId['מצעים'], itemName: 'מצעים', quantity: 10 },
+    ],
+    rentedAt: daysAgo(12),
+    expectedReturnAt: daysAgo(3),
+    returnedAt: null,
+    overdueAlerted: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+  console.log('✓ 3 inventory items + 2 rentals (1 overdue)');
 
   // 4. Sample audit entry
   await db.collection('auditLog').add({

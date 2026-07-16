@@ -72,8 +72,15 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       · `functions/src/morning.ts` (Green Invoice API + simulate fallback), callables
         `createOrderPaymentLink` + `settleOrderPayment`; client `paymentsService.ts`; order-detail תשלום card
       · Morning env (functions): MORNING_ENV / MORNING_API_ID / MORNING_API_SECRET (absent → simulated)
-- [ ] Module 5 — Debt Engine
-- [ ] Module 6 — Rental & Inventory + Overdue Alerts
+- [x] Module 5 — Debt Engine ✓ expiry→debt + interval reminders (scheduled + on-demand), debtors
+      screen (close cash/transfer→paid_manually, manual reminder), all logged. Verified end-to-end.
+      · `functions/src/debt.ts` (markExpiredDebts + sendDueReminders), `debtEngine` (onSchedule 6h) +
+        `runDebtEngine` callable; client `debtorsService.ts`, `src/screens/debtors/*`, nav "חייבים"
+      · Note: onSchedule can't auto-fire in the emulator (no pubsub) — test via runDebtEngine
+- [x] Module 6 — Rental & Inventory + Overdue Alerts ✓ stock decrement/restore (atomic), overdue
+      sweep + alert (Home + screen banner), one-click reminder, all logged. Verified end-to-end.
+      · `inventoryService.ts`, `rentalsService.ts`, `functions/src/rentals.ts` (markOverdueRentals),
+        `rentalOverdueSweep`(sched)+`runRentalSweep`(callable), `src/screens/inventory/*`, nav "השכרות ומלאי"
 - [ ] Module 7 — Audit Log Viewer
 - [ ] Module 8 — Institutional Monthly Invoicing
 - [ ] Module 9 — Manager Dashboard
