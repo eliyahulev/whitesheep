@@ -89,7 +89,9 @@ Java is NOT an app/production dependency — only for local emulators. Productio
       notes marked invoiced. Verified. Private M4 flow untouched.
       · morning.ts issueConsolidated, `issueMonthlyInvoice` callable, `monthlyInvoicingService.ts`,
         `src/screens/invoicing/MonthlyInvoicingScreen.tsx`, nav "חיוב חודשי"
-- [ ] Module 9 — Manager Dashboard
+- [x] Module 9 — Manager Dashboard ✓ live cards: open orders by status, overdue-return alert,
+      debtors+total (manager-only), inventory availability. HomeScreen (/) rebuilt as dashboard.
+      Employee sees operational cards only (no debtors). Verified.
 - [ ] Module 10 — Hardening & Deploy
 
 ## Project layout
